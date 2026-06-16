@@ -1,0 +1,107 @@
+{
+  "resumen": {
+    "total_cursos": 2313,
+    "cursos_con_content": 1811,
+    "cursos_sin_content": 502,
+    "porcentaje_sin_content": "21.7%"
+  },
+  "campos_analizados": {
+    "siempre_presentes": [
+      "learningMaterial",
+      "year",
+      "isExchangeCourse",
+      "prerequisites",
+      "courseLevel",
+      "yearInDegree",
+      "learningOutcomes",
+      "credits",
+      "teachingPeriods",
+      "evaluationCriteria",
+      "equivalentCoursesInfo",
+      "id",
+      "name",
+      "searchTags",
+      "coursePeriod",
+      "workload",
+      "languageOfLearning",
+      "code",
+      "content"
+    ],
+    "nunca_presentes": []
+  },
+  "campos_con_placeholders": {
+    "prerequisites": {
+      "placeholder": 256,
+      "contenido_real": 3,
+      "ejemplos": [
+        "Bachelor's degree or alike in an appropriate field in the so...",
+        "The course is designed as cross-disciplinary. It is targeted..."
+      ]
+    },
+    "learningMaterial": {
+      "placeholder": 254,
+      "contenido_real": 6,
+      "ejemplos": [
+        "Literature will be announced in the beginning of the course....",
+        "Reading package..."
+      ]
+    },
+    "workload": {
+      "placeholder": 6,
+      "contenido_real": 258,
+      "ejemplos": [
+        "Details under the header Teaching...",
+        "Details under the header Teaching..."
+      ]
+    },
+    "evaluationCriteria": {
+      "placeholder": 0,
+      "contenido_real": 19,
+      "ejemplos": [
+        "individual written assignment 100 %, Grading scale 0 - 5...",
+        "Pass/Fail..."
+      ]
+    }
+  },
+  "distribucion_por_año": {
+    "2023-2024": 46,
+    "2025-2026": 215,
+    "2021-2022": 28,
+    "2022-2023": 62,
+    "2024-2025": 40,
+    "2020-2021": 78,
+    "2014-2015": 3,
+    "2026-2027": 8,
+    "2013-2014": 2,
+    "2016-2017": 7,
+    "2019-2020": 6,
+    "2017-2018": 5,
+    "2009-2010": 1,
+    "2027-2028": 1
+  },
+  "idiomas": {
+    "sin_content": {
+      "en": 117,
+      "fi": 241,
+      "en, fi": 5,
+      "sv": 37,
+      "ru": 14,
+      "fi, en": 28,
+      "de": 12,
+      "zh": 12,
+      "fr": 14,
+      "en, fi, sv": 6,
+      "es": 9,
+      "fi, ru": 1,
+      "ja": 4,
+      "fi, ja": 2
+    },
+    "con_content": {
+      "en": 1188,
+      "fi": 497,
+      "en, fi": 69,
+      "fi, en": 53,
+      "zh": 4
+    }
+  }
+}

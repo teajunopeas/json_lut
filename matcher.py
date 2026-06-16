@@ -24,7 +24,8 @@ def prepare_text_for_embedding(content: str, outcomes: str) -> str:
 def get_filtered_candidates(query: str, target_semester: str, current_ects: int, limit: int = 15) -> list:
     """Paso 1: Filtrado duro en SQLite (Reglas burocráticas).
     
-    Nota: Si no hay resultados FTS, usa búsqueda por palabras clave comunes.
+    IMPORTANTE: El fallback SOLO retorna cursos con contenido non-null, para que los embeddings sean significativos.
+    Nota: Si no hay resultados FTS (búsqueda en español), usa búsqueda fallback con cursos que tengan contenido.
     """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -37,19 +38,27 @@ def get_filtered_candidates(query: str, target_semester: str, current_ects: int,
     cursor = conn.execute(sql, (query, limit * 3))
     candidates_fts = cursor.fetchall()
     
-    # Si FTS no encuentra nada (ej: búsqueda en español), hacer búsqueda fallback
+    # Si FTS no encuentra nada (ej: búsqueda en español), hacer búsqueda fallback inteligente
     if not candidates_fts:
-        console.print(f"[dim]→ FTS sin resultados, usando búsqueda fallback por palabras clave...[/dim]")
-        # Fallback: buscar todo y confiar en embeddings para ranking
+        console.print(f"[dim]→ FTS sin resultados, usando búsqueda fallback (solo cursos con contenido)...[/dim]")
+        # Fallback: buscar cursos que TENGAN contenido y learning outcomes
+        # (evitar los ~500 cursos vacíos que no tienen sentido para embeddings)
         sql_fallback = """
             SELECT code, name, credits_min, credits_max, course_level, periods, content, learning_outcomes
-            FROM courses LIMIT ?
+            FROM courses 
+            WHERE content IS NOT NULL AND content != '' 
+            AND learning_outcomes IS NOT NULL AND learning_outcomes != ''
+            LIMIT ?
         """
-        cursor = conn.execute(sql_fallback, (limit * 5,))
+        cursor = conn.execute(sql_fallback, (limit * 10,))
         candidates_fts = cursor.fetchall()
     
     valid_candidates = []
     for row in candidates_fts:
+        # Skip cursos sin contenido (los embeddings serían vacíos/sin sentido)
+        if not row["content"] or not row["learning_outcomes"]:
+            continue
+            
         level = (row["course_level"] or "").lower()
         is_master = "master" in level or "advanced" in level
         
