@@ -1,6 +1,5 @@
 requests>=2.31.0
 pytest>=8.0.0
-ollama
-sentence-transformesrs
+sentence-transformers
 numpy
 rich

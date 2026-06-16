@@ -55,5 +55,8 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Temporal
+# Temporal/Debug scripts
 check_json.py
+check_db.py
+debug_matcher.py
+

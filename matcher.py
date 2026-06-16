@@ -22,7 +22,10 @@ def prepare_text_for_embedding(content: str, outcomes: str) -> str:
     return text.strip()
 
 def get_filtered_candidates(query: str, target_semester: str, current_ects: int, limit: int = 15) -> list:
-    """Paso 1: Filtrado duro en SQLite (Reglas burocráticas)."""
+    """Paso 1: Filtrado duro en SQLite (Reglas burocráticas).
+    
+    Nota: Si no hay resultados FTS, usa búsqueda por palabras clave comunes.
+    """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     
@@ -32,13 +35,25 @@ def get_filtered_candidates(query: str, target_semester: str, current_ects: int,
         FROM courses WHERE courses MATCH ? ORDER BY rank LIMIT ?
     """
     cursor = conn.execute(sql, (query, limit * 3))
+    candidates_fts = cursor.fetchall()
+    
+    # Si FTS no encuentra nada (ej: búsqueda en español), hacer búsqueda fallback
+    if not candidates_fts:
+        console.print(f"[dim]→ FTS sin resultados, usando búsqueda fallback por palabras clave...[/dim]")
+        # Fallback: buscar todo y confiar en embeddings para ranking
+        sql_fallback = """
+            SELECT code, name, credits_min, credits_max, course_level, periods, content, learning_outcomes
+            FROM courses LIMIT ?
+        """
+        cursor = conn.execute(sql_fallback, (limit * 5,))
+        candidates_fts = cursor.fetchall()
     
     valid_candidates = []
-    for row in cursor.fetchall():
+    for row in candidates_fts:
         level = (row["course_level"] or "").lower()
         is_master = "master" in level or "advanced" in level
         
-        # REGLA DE LOS 150 ECTS
+        # REGLA DE LOS 150 ECTS (si nivel Master y semestre Autumn, necesitas >= 150 ECTS)
         if target_semester == "autumn" and current_ects < 150 and is_master:
             continue
             
