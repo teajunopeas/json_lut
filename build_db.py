@@ -58,7 +58,11 @@ def build_agent_db():
             c_min = credits.get("min", 0)
             c_max = credits.get("max", 0)
         else:
-            c_min = c_max = 0
+            # Intentar convertir string directo a número
+            try:
+                c_min = c_max = int(float(str(credits)))
+            except (ValueError, TypeError):
+                c_min = c_max = 0
             
         # 2. Procesar periodos (de la lista teachingPeriods o rawDetail)
         periods = c.get("teachingPeriods")

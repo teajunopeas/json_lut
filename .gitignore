@@ -47,6 +47,7 @@ test_periods2.json
 .pytest_cache/
 .coverage
 htmlcov/
+.cache/
 
 # Logs
 *.log

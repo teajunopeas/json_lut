@@ -522,6 +522,15 @@ def main() -> None:
     lut_assignments: dict[str, list[str]] = {}
     config = {"show_optatives": False}
 
+    # Mostrar explicación de funcionalidades al arrancar
+    console.print("\n[bold cyan]FUNCIONALIDADES DISPONIBLES[/bold cyan]\n")
+    console.print("- Seleccionar asignatura: buscar equivalencias para una asignatura ULPGC.")
+    console.print("- Mostrar emparejamientos actuales: ver las asignaciones ULPGC -> LUT existentes.")
+    console.print("- Configuración: activar/desactivar la visualización de asignaturas optativas.")
+    console.print("- Procesar obligatorias sin asignar: intentar emparejar todas las obligatorias no asignadas.")
+    console.print("- Revisar sin asignar: revisar y emparejar todas las asignaturas no asignadas.")
+    console.print("- Salir: terminar el programa.\n")
+
     while True:
         console.print("\n[bold cyan]MENU PRINCIPAL[/bold cyan]")
         console.print("  1. Seleccionar asignatura")
