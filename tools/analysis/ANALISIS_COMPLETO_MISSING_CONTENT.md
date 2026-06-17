@@ -13,6 +13,7 @@
 ### ✅ SÍ son entradas estructuralmente válidas
 
 Todos los 502 cursos tienen:
+
 - ✓ `name`: 100% (502/502) - nombres válidos y coherentes
 - ✓ `code`: 100% (502/502) - códigos estándar (ej: AT00CQ82)
 - ✓ `courseLevel`: 100% (502/502) - clasificación correcta
@@ -34,16 +35,19 @@ Todos los 502 cursos tienen:
 ## 2️⃣ PATRONES DETECTADOS
 
 ### Patrón A: Placeholders masivos (98%+)
+
 ```json
 "prerequisites": "Details available in Completion methods under the header Teaching"
 "learningMaterial": "Details available in Completion methods under the header Teaching"
 ```
+
 - `prerequisites`: 256/259 son placeholder (98.8%)
 - `learningMaterial`: 254/260 son placeholder (97.7%)
 
 → **El scraper intentó extraer pero falló, puso links genéricos**
 
 ### Patrón B: Algunos campos SÍ se extrajeron
+
 - `workload`: 258/264 con contenido REAL (97.7% éxito)
 - `evaluationCriteria`: 19 cursos tienen contenido real
 

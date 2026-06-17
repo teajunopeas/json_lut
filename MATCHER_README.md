@@ -122,21 +122,9 @@ for r in scored[:10]:  # Cambia 10 para mostrar más/menos resultados
 ## Archivos Relacionados
 
 - **matcher_v2.py**: Script principal (este archivo)
-- **lut_courses.db**: Base de datos SQLite con 2313 cursos de LUT
+- **lut_courses.db**: Base de datos SQLite regenerable con `python build_db.py`
 - **ulpgc_courses.json**: Datos de los 27 cursos ULPGC (fuente)
-- **expand_keyword_map.py**: Herramienta para extraer keywords automáticamente
-
----
-
-## Comparación con Versión Anterior (matcher.py)
-
-| Aspecto | matcher.py (viejo) | matcher_v2.py (nuevo) |
-|---------|------------------|---------------------|
-| **Pre-filtrado** | Fallback: todos los ~2000 cursos | FTS: solo 30-40 cursos |
-| **Velocidad** | Lento (embeddings de 2000+) | Rápido (embeddings de 30-40) |
-| **Relevancia** | Media (falsos positivos) | Alta (solo términos relacionados) |
-| **Menú** | No, solo 3 cursos hardcodeados | Sí, selector interactivo para 27 |
-| **Extensión** | Difícil (modificar código) | Fácil (editar KEYWORD_MAP) |
+- **tools/analysis/**: Scripts e informes exploratorios sobre cobertura de `content`
 
 ---
 
@@ -180,7 +168,7 @@ if choice == 0:
 **Pocos resultados (< 5 cursos)**
 - Ajusta los keywords: edita `KEYWORD_MAP`
 - Aumenta el `limit` en `search_keywords()`
-- Verifica que la BD no esté vacía: `python check_db.py`
+- Verifica que la BD se haya regenerado correctamente con `python build_db.py`
 
 **Resultados con baja similitud (< 40%)**
 - Normal: embeddings capturan similitud semántica, no equivalencia exacta

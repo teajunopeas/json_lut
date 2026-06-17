@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""
-matcher_v2.py - Busqueda inteligente: Keywords + Embeddings Semanticos
-Versi n completa con los 27 cursos ULPGC
-SIN caracteres Unicode para compatibilidad Windows
+"""Matcher interactivo para buscar equivalencias ULPGC -> LUT.
+
+El flujo combina dos pasos:
+1. Preselecciona cursos LUT con SQLite FTS5 usando keywords en ingles.
+2. Reordena los candidatos con embeddings semanticos de SentenceTransformers.
+
+Requiere `lut_courses.db`, generado con `build_db.py`, y
+`ulpgc_courses.json`, que contiene las asignaturas ULPGC enriquecidas.
 """
 import sqlite3
 import json
@@ -158,7 +162,7 @@ KEYWORD_MAP = {
 }
 
 def prepare_text(content: str, outcomes: str, name: str = "") -> str:
-    """Preparar texto para embedding."""
+    """Une los campos descriptivos disponibles para calcular embeddings."""
     parts = []
     if content and len(str(content).strip()) > 20:
         parts.append(str(content))
@@ -169,7 +173,7 @@ def prepare_text(content: str, outcomes: str, name: str = "") -> str:
     return " ".join(parts).strip()
 
 def search_keywords(keywords: list, limit: int = 30) -> list:
-    """Buscar por keywords en FTS."""
+    """Devuelve candidatos LUT encontrados por FTS a partir de keywords."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     
@@ -186,7 +190,7 @@ def search_keywords(keywords: list, limit: int = 30) -> list:
     return results
 
 def score_similarity(ulpgc_text: str, candidates: list) -> list:
-    """Calcular similitud semántica."""
+    """Ordena candidatos por similitud coseno contra el texto ULPGC."""
     ulpgc_emb = model.encode(ulpgc_text, convert_to_tensor=True)
     
     scored = []

@@ -1,6 +1,9 @@
-"""
-Paso 1: Construcción de la Base de Datos para el Agente RAM.
-Lee lut_courses.json y crea lut_courses.db con índice FTS5.
+"""Construye la base SQLite usada por el matcher.
+
+Lee `lut_courses.json`, normaliza los campos que usa la busqueda y crea
+`lut_courses.db` con una tabla virtual FTS5 llamada `courses`.
+
+La base de datos es un artefacto regenerable y no se versiona en Git.
 """
 import json
 import sqlite3
@@ -13,6 +16,7 @@ JSON_PATH = Path("lut_courses.json")
 DB_PATH = Path("lut_courses.db")
 
 def build_agent_db():
+    """Regenera `lut_courses.db` desde el JSON principal de cursos LUT."""
     if not JSON_PATH.exists():
         console.print(f"[red]Error:[/red] No se encontró {JSON_PATH}. Ejecuta primero scraper.py")
         return

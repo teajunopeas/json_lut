@@ -11,7 +11,17 @@
     "credits": "7.5",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Matemáticas"
+    "area": "Matemáticas",
+    "keywords": [
+      "complex analysis",
+      "complex variables",
+      "analytic functions",
+      "cauchy theorem",
+      "residue theorem",
+      "fourier series",
+      "complex integration",
+      "harmonic functions"
+    ]
   },
   {
     "code": "49190",
@@ -25,7 +35,17 @@
     "credits": "6",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Física"
+    "area": "Física",
+    "keywords": [
+      "electromagnetic waves",
+      "wave propagation",
+      "electromagnetic radiation",
+      "physical optics",
+      "diffraction",
+      "interference",
+      "laser technology",
+      "coherence"
+    ]
   },
   {
     "code": "49189",
@@ -39,7 +59,17 @@
     "credits": "6",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Estadística"
+    "area": "Estadística",
+    "keywords": [
+      "statistics",
+      "linear regression",
+      "analysis of variance",
+      "linear models",
+      "multivariate statistics",
+      "hypothesis testing",
+      "bayesian statistics",
+      "statistical inference"
+    ]
   },
   {
     "code": "49191",
@@ -53,7 +83,17 @@
     "credits": "7.5",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Física"
+    "area": "Física",
+    "keywords": [
+      "quantum mechanics",
+      "schrodinger equation",
+      "quantum operators",
+      "wave function",
+      "perturbation theory",
+      "variational method",
+      "eigenvalues",
+      "quantum states"
+    ]
   },
   {
     "code": "49192",
@@ -67,7 +107,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Matemáticas"
+    "area": "Matemáticas",
+    "keywords": [
+      "partial differential equations",
+      "differential equations",
+      "fourier series",
+      "laplace equation",
+      "wave equation",
+      "heat equation",
+      "separation of variables",
+      "mathematical physics"
+    ]
   },
   {
     "code": "49201",
@@ -81,7 +131,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Computación"
+    "area": "Computación",
+    "keywords": [
+      "deep learning",
+      "neural networks",
+      "convolutional networks",
+      "machine learning",
+      "training algorithms",
+      "optimization",
+      "classification",
+      "time series analysis"
+    ]
   },
   {
     "code": "49193",
@@ -95,7 +155,17 @@
     "credits": "7.5",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Física"
+    "area": "Física",
+    "keywords": [
+      "solid state physics",
+      "materials science",
+      "crystal structure",
+      "crystalline defects",
+      "lattice vibrations",
+      "semiconductors",
+      "electronic structure",
+      "superconductivity"
+    ]
   },
   {
     "code": "49195",
@@ -109,7 +179,17 @@
     "credits": "6",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Física"
+    "area": "Física",
+    "keywords": [
+      "fluid mechanics",
+      "fluid dynamics",
+      "transport phenomena",
+      "continuum mechanics",
+      "navier stokes",
+      "dimensional analysis",
+      "turbulence",
+      "magnetohydrodynamics"
+    ]
   },
   {
     "code": "49202",
@@ -123,7 +203,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Física"
+    "area": "Física",
+    "keywords": [
+      "plasma physics",
+      "plasma simulation",
+      "plasma equilibrium",
+      "electromagnetic plasmas",
+      "thermodynamics",
+      "ionization",
+      "magnetic confinement",
+      "plasma applications"
+    ]
   },
   {
     "code": "49203",
@@ -137,7 +227,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Física"
+    "area": "Física",
+    "keywords": [
+      "physical oceanography",
+      "ocean physics",
+      "geophysical fluid dynamics",
+      "geostrophic flow",
+      "ekman layer",
+      "ocean circulation",
+      "vorticity dynamics",
+      "stratified flow"
+    ]
   },
   {
     "code": "49204",
@@ -151,7 +251,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Estadística"
+    "area": "Estadística",
+    "keywords": [
+      "statistical inference",
+      "parameter estimation",
+      "hypothesis testing",
+      "confidence intervals",
+      "maximum likelihood",
+      "neyman pearson",
+      "nonparametric inference",
+      "goodness of fit"
+    ]
   },
   {
     "code": "49194",
@@ -165,7 +275,17 @@
     "credits": "4.5",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Ingeniería"
+    "area": "Ingeniería",
+    "keywords": [
+      "instrumentation",
+      "measurement systems",
+      "sensors",
+      "transducers",
+      "signal conditioning",
+      "data acquisition",
+      "electronic instrumentation",
+      "virtual instrumentation"
+    ]
   },
   {
     "code": "49196",
@@ -179,7 +299,17 @@
     "credits": "6",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Matemáticas"
+    "area": "Matemáticas",
+    "keywords": [
+      "finite element method",
+      "numerical methods",
+      "finite differences",
+      "partial differential equations",
+      "weak solutions",
+      "galerkin method",
+      "functional analysis",
+      "numerical stability"
+    ]
   },
   {
     "code": "49197",
@@ -193,7 +323,17 @@
     "credits": "6",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Matemáticas"
+    "area": "Matemáticas",
+    "keywords": [
+      "measure theory",
+      "lebesgue integration",
+      "convergence theorems",
+      "measurable functions",
+      "real analysis",
+      "hilbert spaces",
+      "fourier transform",
+      "trigonometric series"
+    ]
   },
   {
     "code": "49205",
@@ -207,7 +347,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Ingeniería"
+    "area": "Ingeniería",
+    "keywords": [
+      "digital twins",
+      "environmental modelling",
+      "remote sensing",
+      "geographic information systems",
+      "terrain models",
+      "numerical simulation",
+      "data assimilation",
+      "risk analysis"
+    ]
   },
   {
     "code": "49206",
@@ -221,7 +371,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Ingeniería"
+    "area": "Ingeniería",
+    "keywords": [
+      "photonic devices",
+      "photodetectors",
+      "solar cells",
+      "semiconductor lasers",
+      "light emitting diodes",
+      "optical absorption",
+      "photoconductivity",
+      "photonics"
+    ]
   },
   {
     "code": "49207",
@@ -235,7 +395,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Física"
+    "area": "Física",
+    "keywords": [
+      "ionizing radiation",
+      "radioactivity",
+      "nuclear physics",
+      "dosimetry",
+      "radiation detection",
+      "radiation shielding",
+      "radiological protection",
+      "nuclear applications"
+    ]
   },
   {
     "code": "49200",
@@ -249,7 +419,17 @@
     "credits": "6",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Física"
+    "area": "Física",
+    "keywords": [
+      "statistical physics",
+      "complex systems",
+      "phase transitions",
+      "critical phenomena",
+      "fluctuations",
+      "statistical ensembles",
+      "thermodynamics",
+      "dynamical systems"
+    ]
   },
   {
     "code": "49198",
@@ -263,7 +443,17 @@
     "credits": "6",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Física"
+    "area": "Física",
+    "keywords": [
+      "quantum field theory",
+      "quantum information",
+      "quantum entanglement",
+      "quantum computing",
+      "quantum communication",
+      "quantum technologies",
+      "second quantization",
+      "quantum mechanics"
+    ]
   },
   {
     "code": "49208",
@@ -277,7 +467,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Estadística"
+    "area": "Estadística",
+    "keywords": [
+      "multivariate analysis",
+      "principal component analysis",
+      "multivariate regression",
+      "classification",
+      "clustering",
+      "factor analysis",
+      "linear models",
+      "statistical learning"
+    ]
   },
   {
     "code": "49199",
@@ -291,7 +491,17 @@
     "credits": "6",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Ingeniería"
+    "area": "Ingeniería",
+    "keywords": [
+      "engineering projects",
+      "project management",
+      "engineering design",
+      "project planning",
+      "resource management",
+      "project control",
+      "scheduling",
+      "technical documentation"
+    ]
   },
   {
     "code": "49209",
@@ -305,7 +515,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Computación"
+    "area": "Computación",
+    "keywords": [
+      "quantum computing",
+      "quantum algorithms",
+      "quantum computers",
+      "quantum gates",
+      "quantum machine learning",
+      "quantum applications",
+      "quantum information",
+      "quantum circuits"
+    ]
   },
   {
     "code": "49210",
@@ -319,7 +539,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Estadística"
+    "area": "Estadística",
+    "keywords": [
+      "bayesian inference",
+      "bayesian statistics",
+      "prior distributions",
+      "posterior distributions",
+      "mcmc",
+      "sampling methods",
+      "bayesian linear models",
+      "data analysis"
+    ]
   },
   {
     "code": "49211",
@@ -333,7 +563,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Ingeniería"
+    "area": "Ingeniería",
+    "keywords": [
+      "high energy density physics",
+      "plasma simulation",
+      "numerical modelling",
+      "radiation transport",
+      "high density plasma",
+      "matter interactions",
+      "computational physics",
+      "partial differential equations"
+    ]
   },
   {
     "code": "49212",
@@ -347,7 +587,17 @@
     "credits": "3",
     "university": "ULPGC",
     "type": "optativa",
-    "area": "Ingeniería"
+    "area": "Ingeniería",
+    "keywords": [
+      "complex networks",
+      "network analysis",
+      "network metrics",
+      "network models",
+      "dynamic processes",
+      "network structure",
+      "graph theory",
+      "network resilience"
+    ]
   },
   {
     "code": "49213",
@@ -361,7 +611,17 @@
     "credits": "12",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Ingeniería"
+    "area": "Ingeniería",
+    "keywords": [
+      "internship",
+      "practical training",
+      "professional experience",
+      "work placement",
+      "applied learning",
+      "engineering practice",
+      "real world project",
+      "work experience"
+    ]
   },
   {
     "code": "49214",
@@ -375,6 +635,16 @@
     "credits": "12",
     "university": "ULPGC",
     "type": "obligatoria",
-    "area": "Ingeniería"
+    "area": "Ingeniería",
+    "keywords": [
+      "bachelor thesis",
+      "final project",
+      "engineering project",
+      "project planning",
+      "project development",
+      "research project",
+      "technical documentation",
+      "academic writing"
+    ]
   }
 ]

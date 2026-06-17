@@ -1,13 +1,16 @@
-# LUT SISU Scraper
+# LUT SISU Scraper y Matcher ULPGC -> LUT
 
-Este proyecto contiene un scraper para extraer el catálogo de cursos de la universidad LUT desde el API SISU.
+Este proyecto extrae el catálogo de cursos de LUT desde el API SISU y lo prepara para buscar posibles equivalencias con asignaturas ULPGC.
 
 ## Archivos principales
 
 - `scraper.py`: scraper principal con búsqueda y descarga de detalles de curso.
-- `test_helpers.py`: pruebas unitarias para rutinas de limpieza y parseo.
-- `test_search.py`: prueba de consulta al endpoint de búsqueda.
-- `test_detail.py`: prueba de transformación del detalle de un curso.
+- `build_db.py`: genera `lut_courses.db` desde `lut_courses.json` con índice FTS5.
+- `matcher_v2.py`: matcher interactivo que combina keywords y embeddings semánticos.
+- `lut_courses.json`: catálogo LUT versionado.
+- `ulpgc_courses.json`: asignaturas ULPGC enriquecidas para el matcher.
+- `tools/analysis/`: scripts e informes exploratorios sobre calidad del dataset.
+- `tests/`: pruebas del scraper y del mapeo de campos.
 
 ## Requisitos
 
@@ -18,6 +21,8 @@ pip install -r requirements.txt
 ```
 
 ## Uso
+
+### 1. Scraping LUT
 
 Ejecuta el scraper con una consulta limitada para probar:
 
@@ -30,6 +35,22 @@ Para pasar una cookie HTTP si el endpoint la requiere:
 ```bash
 python scraper.py --cookie "TU_COOKIE_AQUI" --output lut_courses.json
 ```
+
+### 2. Construir la base de búsqueda
+
+`lut_courses.db` no se versiona porque es regenerable:
+
+```bash
+python build_db.py
+```
+
+### 3. Buscar equivalencias
+
+```bash
+python matcher_v2.py
+```
+
+Consulta más detalles en `MATCHER_README.md`.
 
 ## Extracción de la cookie
 
@@ -63,4 +84,4 @@ El resultado se guarda en un archivo JSON con registros que incluyen:
 
 ## Nota
 
-No se ha ejecutado `pytest` durante este cambio. Las pruebas están disponibles en los archivos mencionados, y puedes ejecutarlas manualmente cuando lo necesites.
+`tests/test_search.py` consulta el endpoint real de LUT; trátalo como prueba de integración si no tienes red disponible.
