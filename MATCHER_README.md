@@ -3,18 +3,22 @@
 ## ¿Cómo Usar?
 
 ### Paso 1: Activar el entorno virtual
+
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
 ### Paso 2: Ejecutar el script
+
 ```powershell
 python matcher_v2.py
 ```
 
 ### Paso 3: Seleccionar un curso
+
 El script muestra un menú con los 27 cursos ULPGC disponibles:
-```
+
+```bash
 CURSOS DISPONIBLES ULPGC:
 
  1. 49188 - Analisis Matematico III
@@ -24,6 +28,7 @@ CURSOS DISPONIBLES ULPGC:
 ```
 
 **Opciones:**
+
 - Escribe un número (1-27) para buscar equivalencias de UN curso
 - Escribe **0** para buscar todos los cursos a la vez (genera un reporte largo)
 
@@ -31,7 +36,7 @@ CURSOS DISPONIBLES ULPGC:
 
 El script mostrará una tabla con los top 10 cursos de LUT ordenados por similitud:
 
-```
+```bash
 RESULTADOS - Top 10:
 
 ┌─────────┬──────────┬──────────────────────────────────────┬──────┬──────────┐
@@ -44,6 +49,7 @@ RESULTADOS - Top 10:
 ```
 
 **Interpretar columnas:**
+
 - **Simil %**: Similitud semántica (0-100%). Rojo < 50%, Amarillo 50-60%, Verde > 60%
 - **Codigo**: Código del curso LUT
 - **Nombre**: Nombre del curso LUT
@@ -55,23 +61,27 @@ RESULTADOS - Top 10:
 ## Arquitectura Interna
 
 ### 1. **Pre-filtrado por Keywords (FTS)**
+
 - Extrae 7-12 palabras clave en INGLÉS de cada curso ULPGC
 - Busca en la base de datos SQLite con Full-Text Search
 - Resultado: 30-40 candidatos PRE-SELECCIONADOS relevantes
 
 **Ejemplo:**
-```
+
+```text
 Métodos Matemáticos II (ULPGC) → 
 Keywords: "differential equations", "partial differential", "fourier series", ...
 → FTS Search → 40 cursos con estos términos en LUT
 ```
 
 ### 2. **Ranking por Similitud Semántica**
+
 - Usa embeddings (all-MiniLM-L6-v2 de Sentence-Transformers)
 - Calcula similitud coseno entre texto ULPGC y cada candidato LUT
 - Ordena resultados por puntuación (0-100%)
 
 **Ventajas:**
+
 - Semántica: No busca palabras exactas, sino significado similar
 - Rápido: Embeddings solo de 30-40 cursos (no 2313)
 - Relevante: Keywords garantizan candidatos relacionados
@@ -97,6 +107,7 @@ Abre `matcher_v2.py` y edita `KEYWORD_MAP`:
 ```
 
 **Tips para buenos keywords:**
+
 - Usa términos en INGLÉS (base de datos LUT está en inglés)
 - Incluye sinónimos y variaciones
 - 8-10 términos es óptimo
@@ -105,6 +116,7 @@ Abre `matcher_v2.py` y edita `KEYWORD_MAP`:
 ### Cambiar límite de resultados
 
 En la función `search_keywords()`:
+
 ```python
 def search_keywords(keywords: list, limit: int = 30) -> list:
     # limit=30 es el número de candidatos pre-filtrados
@@ -112,6 +124,7 @@ def search_keywords(keywords: list, limit: int = 30) -> list:
 ```
 
 En la tabla de resultados:
+
 ```python
 for r in scored[:10]:  # Cambia 10 para mostrar más/menos resultados
     table.add_row(...)
@@ -131,6 +144,7 @@ for r in scored[:10]:  # Cambia 10 para mostrar más/menos resultados
 ## Ejemplos de Uso
 
 ### Búsqueda Simple: Un Curso
+
 ```powershell
 python matcher_v2.py
 # Selecciona: 5 (Métodos Matemáticos II)
@@ -138,6 +152,7 @@ python matcher_v2.py
 ```
 
 ### Búsqueda Avanzada: Todos los Cursos
+
 ```powershell
 python matcher_v2.py
 # Selecciona: 0 (procesa los 27)
@@ -148,6 +163,7 @@ python matcher_v2.py
 ### Script Batch: Procesar Solo Matemáticas
 
 Edita `matcher_v2.py` en la función `main()`:
+
 ```python
 # Descomentar estas líneas para filtrar por área
 if choice == 0:
@@ -158,19 +174,23 @@ if choice == 0:
 
 ## Troubleshooting
 
-**Error: "No se encontró lut_courses.db"**
+### Error: "No se encontró lut_courses.db"
+
 - Primero ejecuta: `python build_db.py`
 
-**Error: "UnicodeEncodeError" en Windows**
+### Error: "UnicodeEncodeError" en Windows**
+
 - Ya está solucionado (sin emojis)
 - Si ocurre de nuevo, asegúrate de tener Python 3.12+
 
-**Pocos resultados (< 5 cursos)**
+### Pocos resultados (< 5 cursos)
+
 - Ajusta los keywords: edita `KEYWORD_MAP`
 - Aumenta el `limit` en `search_keywords()`
 - Verifica que la BD se haya regenerado correctamente con `python build_db.py`
 
-**Resultados con baja similitud (< 40%)**
+### Resultados con baja similitud (< 40%)
+
 - Normal: embeddings capturan similitud semántica, no equivalencia exacta
 - Interpreta como "relevante" si > 35%
 - Interpreta como "muy relevante" si > 50%
@@ -181,9 +201,7 @@ if choice == 0:
 
 1. **Combinaciones 2-curso**: Implementar búsqueda de pares
    - "¿Qué 2 cursos LUT pueden cubrir 1 ULPGC?"
-   
 2. **Re-scraper de 2025-2026**: Mejorar ~500 cursos sin descripción
-   
 3. **Exportación a CSV**: Generar reportes para Excel
 
 4. **API REST**: Exponer como servicio web
