@@ -48,6 +48,10 @@ test_periods2.json
 .coverage
 htmlcov/
 .cache/
+models/
+
+# Packaging
+*.spec
 
 # Logs
 *.log

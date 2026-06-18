@@ -12,13 +12,13 @@ aprobacion automatica.
 """
 
 import json
-import os
 import sqlite3
 from itertools import combinations
 from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table
+from rich.columns import Columns
 from rich.panel import Panel
 from sentence_transformers import SentenceTransformer, util
 
@@ -26,14 +26,23 @@ console = Console()
 DB_PATH = Path("lut_courses.db")
 ULPGC_PATH = Path("ulpgc_courses.json")
 MODEL_NAME = "all-MiniLM-L6-v2"
+LOCAL_MODEL_PATH = Path("models/all-MiniLM-L6-v2")
 MATCH_THRESHOLD = 75.0
 SEARCH_LIMIT = 40
 RESULT_LIMIT = 10
+MORE_RESULTS_STEP = 20
 
 console.print(
     f"[cyan]Cargando modelo de embeddings ({MODEL_NAME})...[/cyan]"
 )
-model = SentenceTransformer(MODEL_NAME)
+
+if LOCAL_MODEL_PATH.exists():
+    model = SentenceTransformer(str(LOCAL_MODEL_PATH), local_files_only=True)
+else:
+    console.print("[yellow]Modelo local no encontrado. Descargando...[/yellow]")
+    model = SentenceTransformer(MODEL_NAME)
+    model.save(str(LOCAL_MODEL_PATH))
+    console.print(f"[green]Modelo guardado en {LOCAL_MODEL_PATH}[/green]")
 
 
 def load_ulpgc_courses(path: Path = ULPGC_PATH) -> list[dict]:
@@ -155,7 +164,7 @@ def score_similarity(course: dict, candidates: list[dict]) -> list[dict]:
     return scored
 
 
-def render_results(scored: list[dict]) -> None:
+def render_results(scored: list[dict], limit: int = RESULT_LIMIT) -> None:
     """Muestra los candidatos con desglose de similitud por criterio."""
     table = Table(show_lines=True)
     table.add_column("Mejor", justify="center", style="bold cyan", width=8)
@@ -167,7 +176,7 @@ def render_results(scored: list[dict]) -> None:
     table.add_column("ECTS", justify="center", width=6)
     table.add_column("Nivel", style="magenta", width=12)
 
-    for result in scored[:RESULT_LIMIT]:
+    for result in scored[:limit]:
         score = result["best_score"]
         style = "bold green" if result["meets_threshold"] else "bold yellow" if score >= 60 else "dim"
 
@@ -183,6 +192,8 @@ def render_results(scored: list[dict]) -> None:
         )
 
     console.print(table)
+    if limit < len(scored):
+        console.print(f"[dim]Mostrando {min(limit, len(scored))} de {len(scored)} candidatos. Pulsa 'm' para ver más.[/dim]")
 
 def prompt_yes_no(message: str, default: bool = True) -> bool:
     """Solicita una respuesta si/no al usuario."""
@@ -200,40 +211,127 @@ def prompt_yes_no(message: str, default: bool = True) -> bool:
         console.print("[red]Respuesta no valida. Usa 's' o 'n'.[/red]")
 
 
-def show_candidate_details(candidate: dict) -> None:
-    """Muestra contenido, resultados y JSON del candidato elegido."""
-    console.print(f"\n[bold cyan]Detalles del candidato {candidate['code']}[/bold cyan]")
-    console.print(f"[bold]Nombre LUT:[/bold] {candidate.get('name', 'N/A')}")
-    console.print(f"[bold]ECTS LUT:[/bold] {candidate.get('credits_min', 'N/A')} - {candidate.get('credits_max', 'N/A')}")
-    console.print(f"[bold]Nivel LUT:[/bold] {candidate.get('course_level', 'N/A')}\n")
+def build_ulpgc_panel(ulpgc_course: dict) -> Panel:
+    """Construye el panel de referencia ULPGC para reutilizarlo sin duplicarlo."""
+    ulpgc_credits = ulpgc_course.get("credits", "N/A")
+    ulpgc_body_lines = [
+        f"[bold]Nombre:[/bold] {ulpgc_course.get('name', 'N/A')}",
+        f"[bold]ECTS:[/bold] {ulpgc_credits}",
+        "",
+        "[bold]Contenido:[/bold]",
+        str(ulpgc_course.get("content", "(sin contenido)") or "(sin contenido)"),
+        "",
+        "[bold]Resultados de aprendizaje:[/bold]",
+        str(ulpgc_course.get("learningOutcomes", "(sin información)") or "(sin información)"),
+    ]
+    return Panel(
+        "\n".join(ulpgc_body_lines),
+        title=f"[bold green]ULPGC {ulpgc_course.get('code', 'N/A')}[/bold green]",
+        border_style="green",
+    )
 
-    console.print("[bold]Contenido LUT:[/bold]")
-    console.print(candidate.get('content', '(sin contenido)'), overflow='fold')
-    console.print("\n[bold]Resultados de aprendizaje LUT:[/bold]")
-    console.print(candidate.get('learning_outcomes', '(sin learning_outcomes)'), overflow='fold')
-    console.print("\n[bold]JSON completo del candidato:[/bold]")
-    console.print_json(data=candidate)
-    console.print()
+
+def build_lut_panel(lut_course: dict) -> Panel:
+    """Construye el panel detallado del candidato LUT."""
+    lut_credits_min = lut_course.get("credits_min", "N/A")
+    lut_credits_max = lut_course.get("credits_max", "N/A")
+    lut_periods = lut_course.get("periods", "N/A") or "N/A"
+    lut_body_lines = [
+        f"[bold]Nombre:[/bold] {lut_course.get('name', 'N/A')}",
+        f"[bold]ECTS:[/bold] {lut_credits_min}-{lut_credits_max}",
+        f"[bold]Periodo:[/bold] {lut_periods}",
+        "",
+        "[bold]Contenido:[/bold]",
+        str(lut_course.get("content", "(sin contenido)") or "(sin contenido)"),
+        "",
+        "[bold]Resultados de aprendizaje:[/bold]",
+        str(lut_course.get("learning_outcomes", "(sin información)") or "(sin información)"),
+    ]
+    return Panel(
+        "\n".join(lut_body_lines),
+        title=f"[bold cyan]LUT {lut_course.get('code', 'N/A')}[/bold cyan]",
+        border_style="cyan",
+    )
 
 
-def review_candidates(scored: list[dict]) -> dict | None:
-    """Permite seleccionar un candidato y explorar su JSON antes de decidir."""
+def show_comparison(ulpgc_course: dict, lut_course: dict, include_ulpgc: bool = True) -> None:
+    """Muestra la referencia ULPGC una vez y el detalle LUT cuando corresponda."""
+    if include_ulpgc:
+        console.print(Columns([build_ulpgc_panel(ulpgc_course), build_lut_panel(lut_course)], equal=True, expand=True))
+        return
+
+    console.print(build_lut_panel(lut_course))
+
+
+def show_multi_coverage(course: dict, candidates: list[dict]) -> float:
+    """Muestra la cobertura ECTS acumulada de varios candidatos LUT frente al objetivo ULPGC.
+
+    Devuelve el total de ECTS LUT acumulados para que el llamador pueda
+    reutilizarlo (por ejemplo, en el resumen final).
+    """
+    target = parse_float_credits(course.get("credits", 0))
+    console.print(f"\n[bold]ULPGC:[/bold] {course.get('name', 'N/A')} ([bold]{target}[/bold] ECTS objetivo)")
+    console.print("[bold]LUT seleccionados:[/bold]")
+
+    total = 0.0
+    for candidate in candidates:
+        ects = parse_float_credits(candidate.get("credits_max", 0)) or parse_float_credits(candidate.get("credits_min", 0))
+        total += ects
+        console.print(f"  - {candidate.get('code', 'N/A')} | {candidate.get('name', 'N/A')} ({ects} ECTS)")
+
+    coverage_icon = "[bold green]✓[/bold green]" if total >= target else "[bold yellow]⚠[/bold yellow]"
+    console.print(f"\n{coverage_icon} [bold]ECTS LUT acumulados:[/bold] {total} / {target}\n")
+    return total
+
+
+
+def review_candidates(course: dict, scored: list[dict], config: dict) -> list[dict] | str | None:
+    """Permite seleccionar uno o varios candidatos, comparándolos en todo momento con el ULPGC.
+
+    Devuelve:
+      - None si el usuario decide saltar.
+      - "combo" si quiere explorar combinaciones de varios cursos LUT.
+      - una lista de candidatos (uno o varios) si decide asignar.
+    """
     if not scored:
         return None
 
+    limit_state = {"current": min(RESULT_LIMIT, len(scored))}
+    show_comparison(course, scored[0], include_ulpgc=True)
+
     while True:
         prompt = (
-            f"Selecciona candidato (1-{min(RESULT_LIMIT, len(scored))}) para ver detalles, "
-            "'j' + numero para JSON bruto, o 's' para saltar: "
+            f"Selecciona candidato(s) (1-{limit_state['current']}, varios con coma o espacio), "
+            "'v'+num para vista detallada, 'j'+num para JSON, 'm' para más resultados, "
+            "'a' para añadir manualmente, 'c' para combinaciones, o 's' para saltar: "
         )
         choice = input(prompt).strip().lower()
         if choice == "s":
             return None
+
+        if choice == "c":
+            return "combo"
+
+        if choice == "m":
+            limit_state["current"] = min(limit_state["current"] + MORE_RESULTS_STEP, len(scored))
+            render_results(scored, limit=limit_state["current"])
+            continue
+
+        if choice == "a":
+            manual = search_manual_lut_course(course, config)
+            if manual is None:
+                continue
+            show_comparison(course, manual, include_ulpgc=False)
+            if prompt_yes_no("¿Incluir este curso encontrado manualmente en tu selección?", default=True):
+                return [manual]
+            console.print("[yellow]Curso descartado.[/yellow]\n")
+            continue
+
         if choice.startswith("j"):
             selection = choice[1:].strip()
             try:
                 index = int(selection) - 1
-                if index < 0 or index >= min(RESULT_LIMIT, len(scored)):
+                if index < 0 or index >= limit_state["current"]:
                     console.print("[red]Numero fuera de rango para JSON.[/red]")
                     continue
             except ValueError:
@@ -241,36 +339,53 @@ def review_candidates(scored: list[dict]) -> dict | None:
                 continue
             console.print_json(data=scored[index])
             continue
+
         if choice.startswith("v"):
             selection = choice[1:].strip()
             try:
                 index = int(selection) - 1
-                if index < 0 or index >= min(RESULT_LIMIT, len(scored)):
+                if index < 0 or index >= limit_state["current"]:
                     console.print("[red]Numero fuera de rango.[/red]")
                     continue
             except ValueError:
                 console.print("[red]Entrada invalida. Usa 'v 1' para ver el candidato 1.[/red]")
                 continue
             preview_candidate(scored[index], rank=index + 1)
+            show_comparison(course, scored[index], include_ulpgc=False)
             continue
 
-        if choice == "c":
-            return "combo"
+        tokens = choice.replace(",", " ").split()
+        if not tokens:
+            console.print("[red]Entrada invalida.[/red]")
+            continue
 
         try:
-            index = int(choice) - 1
-            if index < 0 or index >= min(RESULT_LIMIT, len(scored)):
-                console.print("[red]Numero fuera de rango.[/red]")
-                continue
+            indices = [int(token) - 1 for token in tokens]
         except ValueError:
             console.print("[red]Entrada invalida.[/red]")
             continue
 
-        candidate = scored[index]
-        show_candidate_details(candidate)
-        if prompt_yes_no("¿Incluir este candidato en tu seleccion?", default=False):
-            return candidate
-        console.print("[yellow]Candidato descartado. Sigue revisando otros candidatos o usa 's' para saltar.[/yellow]\n")
+        if any(index < 0 or index >= limit_state["current"] for index in indices):
+            console.print("[red]Numero fuera de rango.[/red]")
+            continue
+
+        selected_candidates = [scored[index] for index in indices]
+
+        if len(selected_candidates) == 1:
+            candidate = selected_candidates[0]
+            show_comparison(course, candidate, include_ulpgc=False)
+            if prompt_yes_no("¿Incluir este candidato en tu seleccion?", default=False):
+                return [candidate]
+            console.print("[yellow]Candidato descartado. Sigue revisando otros candidatos o usa 's' para saltar.[/yellow]\n")
+            continue
+
+        console.print("\n[bold cyan]Selección múltiple:[/bold cyan]")
+        for candidate in selected_candidates:
+            show_comparison(course, candidate, include_ulpgc=False)
+        show_multi_coverage(course, selected_candidates)
+        if prompt_yes_no("¿Confirmar esta selección múltiple?", default=True):
+            return selected_candidates
+        console.print("[yellow]Selección descartada. Sigue revisando otros candidatos o usa 's' para saltar.[/yellow]\n")
 
 
 def parse_float_credits(value: str | int | float) -> float:
@@ -284,6 +399,49 @@ def parse_float_credits(value: str | int | float) -> float:
         return float(text)
     except ValueError:
         return 0.0
+
+
+def course_matches_filters(course: dict, config: dict) -> bool:
+    """Comprueba si una asignatura ULPGC pasa los filtros activos."""
+    if course.get("type") == "optativa" and not config["show_optatives"]:
+        return False
+
+    semester_filter = config.get("semester_filter")
+    if semester_filter not in (None, "", "todos"):
+        try:
+            return int(course.get("semester", 0)) == int(semester_filter)
+        except (TypeError, ValueError):
+            return False
+
+    return True
+
+
+def semester_filter_label(config: dict) -> str:
+    """Devuelve una etiqueta legible del filtro de semestre activo."""
+    semester_filter = config.get("semester_filter")
+    if semester_filter in (None, "", "todos"):
+        return "Todos"
+    return str(semester_filter)
+
+
+def is_master_or_higher(course_level: str | None) -> bool:
+    """Detecta si el nivel LUT corresponde a master o superior."""
+    if not course_level:
+        return False
+    normalized = str(course_level).strip().lower()
+    return any(keyword in normalized for keyword in ("master", "maister", "postgraduate", "doctoral", "doctor"))
+
+
+def lut_level_filter_label(config: dict) -> str:
+    """Devuelve una etiqueta legible del filtro de nivel LUT."""
+    return "sí" if config.get("show_master_or_higher", True) else "no"
+
+
+def filter_lut_candidates(candidates: list[dict], config: dict) -> list[dict]:
+    """Aplica los filtros activos sobre los candidatos LUT."""
+    if config.get("show_master_or_higher", True):
+        return candidates
+    return [candidate for candidate in candidates if not is_master_or_higher(candidate.get("course_level"))]
 
 
 def deduplicate_candidates(scored: list[dict]) -> list[dict]:
@@ -316,6 +474,72 @@ def load_lut_course_by_code(code: str) -> dict | None:
     return dict(row) if row else None
 
 
+def search_manual_lut_course(course: dict, config: dict) -> dict | None:
+    """Busca un curso LUT por nombre o código para añadirlo manualmente al RAM.
+
+    Los embeddings filtran muy bien, pero un coordinador puede detectar a
+    simple vista una equivalencia que no aparece entre los primeros
+    candidatos. Este flujo permite localizarla y puntuarla igual que el
+    resto de candidatos para que sea comparable en pantalla.
+    """
+    query = input("Buscar curso LUT por nombre o código (vacío para cancelar): ").strip()
+    if not query:
+        return None
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    pattern = f"%{query}%"
+    sql = """
+        SELECT code, name, credits_min, credits_max, course_level, periods, content, learning_outcomes
+        FROM courses
+        WHERE name LIKE ? OR code LIKE ?
+        LIMIT 20
+    """
+    rows = conn.execute(sql, (pattern, pattern)).fetchall()
+    results = [dict(row) for row in rows]
+    conn.close()
+
+    results = filter_lut_candidates(results, config)
+
+    if not results:
+        console.print("[yellow]No se encontraron cursos LUT que coincidan con esa búsqueda.[/yellow]\n")
+        return None
+
+    table = Table(show_lines=True)
+    table.add_column("#", justify="right", width=4)
+    table.add_column("Codigo", style="green", width=12)
+    table.add_column("Nombre", style="white", width=42)
+    table.add_column("ECTS", justify="center", width=8)
+    table.add_column("Nivel", style="magenta", width=12)
+    for index, result in enumerate(results, start=1):
+        table.add_row(
+            str(index),
+            result["code"],
+            result["name"][:41],
+            f"{result['credits_min']}-{result['credits_max']}",
+            result["course_level"] or "N/A",
+        )
+    console.print(table)
+
+    choice = input(f"Selecciona curso (1-{len(results)}) o vacío para cancelar: ").strip()
+    if not choice:
+        return None
+    try:
+        index = int(choice) - 1
+        if index < 0 or index >= len(results):
+            console.print("[red]Numero fuera de rango.[/red]")
+            return None
+    except ValueError:
+        console.print("[red]Entrada invalida.[/red]")
+        return None
+
+    selected = results[index]
+    # Se puntúa igual que el resto de candidatos para que sea comparable
+    # en pantalla (tabla, comparación, cobertura de combinaciones, etc.).
+    scored = score_similarity(course, [selected])
+    return scored[0] if scored else selected
+
+
 def get_candidate_capacity(candidate: dict, lut_assignments: dict[str, list[str]], assignments: dict[str, list[dict]]) -> float:
     """Devuelve los créditos libres de un curso LUT tras asignaciones previas."""
     candidate_credits = parse_float_credits(candidate.get("credits_max", 0))
@@ -332,7 +556,7 @@ def get_candidate_capacity(candidate: dict, lut_assignments: dict[str, list[str]
     return max(0.0, candidate_credits - used_credits)
 
 
-def find_combo_candidates(course: dict, candidates: list[dict], assignments: dict[str, list[dict]], lut_assignments: dict[str, list[str]], max_combo: int = 2, limit: int = 10) -> list[dict]:
+def find_combo_candidates(course: dict, candidates: list[dict], assignments: dict[str, list[dict]], lut_assignments: dict[str, list[str]], config: dict, max_combo: int = 2, limit: int = 10) -> list[dict]:
     """Busca combinaciones de cursos LUT que cubran un ULPGC por créditos."""
     target_credits = parse_float_credits(course.get("credits", "0"))
     if target_credits <= 0:
@@ -350,6 +574,7 @@ def find_combo_candidates(course: dict, candidates: list[dict], assignments: dic
             continue
         deduped.append(candidate)
 
+    deduped = filter_lut_candidates(deduped, config)
     scored_candidates = score_similarity(course, deduped)
     combo_candidates = []
     for candidate in scored_candidates:
@@ -494,10 +719,16 @@ def render_course_list(courses: list[dict], assignments: dict[str, list[dict]], 
     table.add_column("Codigo", style="green", width=12)
     table.add_column("Nombre", style="white", width=40)
     table.add_column("Tipo", style="yellow", width=12)
+    table.add_column("Sem.", justify="center", width=6)
     table.add_column("ECTS", justify="center", width=6)
     table.add_column("Asignado a", style="cyan", width=18)
 
-    visible = [course for course in courses if course.get("type") != "optativa" or config["show_optatives"]]
+    visible = [course for course in courses if course_matches_filters(course, config)]
+    console.print(
+        f"[dim]Filtros activos -> optativas: {'sí' if config['show_optatives'] else 'no'} | "
+        f"semestre: {semester_filter_label(config)} | "
+        f"mostrar master+: {lut_level_filter_label(config)}[/dim]"
+    )
     for index, course in enumerate(visible, start=1):
         code = course.get("code", "N/A")
         status = assignments.get(code)
@@ -507,6 +738,7 @@ def render_course_list(courses: list[dict], assignments: dict[str, list[dict]], 
             code,
             course.get("name", "N/A")[:38],
             course.get("type", "N/A"),
+            str(course.get("semester", "N/A")),
             str(course.get("credits", "N/A")),
             assigned,
         )
@@ -561,14 +793,27 @@ def assign_candidate(course: dict, candidate: dict, assignments: dict[str, list[
     return True
 
 
-def search_and_review_course(course: dict, assignments: dict[str, list[dict]], lut_assignments: dict[str, list[str]], config: dict) -> None:
+def assign_group(course: dict, candidates: list[dict], assignments: dict[str, list[dict]], lut_assignments: dict[str, list[str]]) -> bool:
+    """Asigna uno o varios cursos LUT a un curso ULPGC tras una selección múltiple."""
+    if not candidates:
+        return False
+
+    success = True
+    for candidate in candidates:
+        if not assign_candidate(course, candidate, assignments, lut_assignments):
+            success = False
+    return success
+
+
+def search_and_review_course(course: dict, assignments: dict[str, list[dict]], lut_assignments: dict[str, list[str]], config: dict, courses_dict: dict[str, dict] | None = None) -> None:
     """Busca y revisa candidatos para una asignatura ULPGC."""
     console.print(f"\n[bold cyan]Buscando equivalencias para {course.get('name', 'N/A')} ({course.get('code', 'N/A')})[/bold cyan]")
     console.print(f"[yellow]Keywords usadas: {', '.join(course.get('keywords', []))}[/yellow]\n")
 
     results = search_keywords(course.get("keywords", []))
+    results = filter_lut_candidates(results, config)
     if not results:
-        console.print("[red]No se encontraron candidatos para esta asignatura.[/red]\n")
+        console.print("[red]No se encontraron candidatos para esta asignatura con los filtros activos.[/red]\n")
         return
 
     scored = score_similarity(course, results)
@@ -577,29 +822,36 @@ def search_and_review_course(course: dict, assignments: dict[str, list[dict]], l
         console.print(f"[dim]Se han eliminado {len(scored) - len(deduped)} coincidencias duplicadas.[/dim]\n")
 
     render_results(deduped)
-    console.print("[dim]Pulsa 'c' para buscar combinaciones de cursos LUT si necesitas cubrir esta asignatura con varios cursos.[/dim]\n")
-    selection = review_candidates(deduped)
+    console.print(
+        "[dim]Pulsa 'c' para combinaciones, 'a' para añadir un curso manualmente, "
+        "'m' para ver más candidatos, o varios números (ej. 1,3,5) para seleccionar varios a la vez.[/dim]\n"
+    )
+    selection = review_candidates(course, deduped, config)
     if selection == "combo":
-        combos = find_combo_candidates(course, deduped, assignments, lut_assignments, max_combo=2)
+        combos = find_combo_candidates(course, deduped, assignments, lut_assignments, config, max_combo=2)
         combo = review_combo_candidates(combos, course)
         if combo is None:
             console.print("[yellow]No se seleccionó ninguna combinación.[/yellow]\n")
             return
         if not assign_combo(course, combo, assignments, lut_assignments):
             console.print("[yellow]No se guardó la combinación seleccionada.[/yellow]\n")
+        elif courses_dict is not None:
+            render_current_agreement(assignments, courses_dict)
         return
 
     if selection is None:
         console.print("[yellow]No se realizó ninguna asignación.[/yellow]\n")
         return
 
-    if not assign_candidate(course, selection, assignments, lut_assignments):
+    if not assign_group(course, selection, assignments, lut_assignments):
         console.print("[yellow]No se guardó la asignación. Puedes revisar otro candidato más tarde.[/yellow]\n")
+    elif courses_dict is not None:
+        render_current_agreement(assignments, courses_dict)
 
 
 def select_course_by_input(courses: list[dict], assignments: dict[str, list[dict]], config: dict) -> dict | None:
     """Selecciona una asignatura ULPGC desde la lista filtrada."""
-    visible = [course for course in courses if course.get("type") != "optativa" or config["show_optatives"]]
+    visible = [course for course in courses if course_matches_filters(course, config)]
     if not visible:
         console.print("[red]No hay cursos disponibles con la configuración actual.[/red]")
         return None
@@ -649,6 +901,28 @@ def show_assignment_summary(assignments: dict[str, list[dict]], courses: dict[st
             )
 
     console.print(table)
+
+
+def render_current_agreement(assignments: dict[str, list[dict]], courses_dict: dict[str, dict]) -> None:
+    """Muestra de forma compacta el RAM en construcción tras cada asignación.
+
+    Se invoca justo después de confirmar una asignación (individual, múltiple
+    o por combinación) para que el coordinador nunca pierda de vista lo que
+    ya está aprobado mientras sigue revisando asignaturas.
+    """
+    if not assignments:
+        return
+
+    console.print("\n[bold cyan]" + "=" * 36 + "[/bold cyan]")
+    console.print("[bold cyan]RECONOCIMIENTO ACADÉMICO (en construcción)[/bold cyan]")
+    console.print("[bold cyan]" + "=" * 36 + "[/bold cyan]")
+    for ulpgc_code, entries in assignments.items():
+        course = courses_dict.get(ulpgc_code, {})
+        console.print(f"\n[bold]{course.get('name', ulpgc_code)}[/bold] [dim]({ulpgc_code})[/dim]")
+        for entry in entries:
+            console.print(f"    -> {entry.get('lut_name', 'N/A')} [dim]({entry.get('lut_code', 'N/A')})[/dim]")
+    console.print()
+
 
 def preview_candidate(candidate: dict, rank: int) -> None:
     """Muestra un candidato LUT con formato estructurado y legible.
@@ -861,7 +1135,7 @@ def generate_ram_markdown(ram_matches: list, ulpgc_courses: list) -> str:
         ulpgc_info = ulpgc_map.get(ulpgc_code, {})
         ulpgc_name = ulpgc_info.get("name", "")
         ulpgc_outcomes = ulpgc_info.get(
-            "outcomes", "(Resultados de aprendizaje no disponibles)"
+            "learningOutcomes", "(Resultados de aprendizaje no disponibles)"
         )
 
         md_lines.append(f"### EMPAREJAMIENTO {emparejamiento_num}:")
@@ -924,127 +1198,49 @@ def generate_ram_markdown(ram_matches: list, ulpgc_courses: list) -> str:
     return "\n".join(md_lines)
 
 
-def generate_ram_markdown(ram_matches: list, ulpgc_courses: list):
+def build_ram_matches(assignments: dict[str, list[dict]], courses_dict: dict[str, dict]) -> list[dict]:
+    """Convierte 'assignments' (estructura interna del matcher) al formato que
+    espera generate_ram_markdown, recuperando de la base de datos LUT los
+    campos adicionales (contenido, periodos) que no se guardan en 'assignments'.
     """
-    Genera el Markdown completo del RAM siguiendo el formato oficial ULPGC:
-      - Parte 1: Tabla resumen (Obligatorias + Optativas)
-      - Parte 2: Detalle de la comparativa por emparejamiento
-    Omite asignaturas no emparejadas, incluye parcialmente emparejadas.
+    ram_matches = []
+    for ulpgc_code, entries in assignments.items():
+        for entry in entries:
+            lut_code = entry.get("lut_code", "")
+            lut_detail = load_lut_course_by_code(lut_code) or {}
+            ram_matches.append({
+                "ulpgc_code": ulpgc_code,
+                "lut_code": lut_code,
+                "lut_name": entry.get("lut_name", "N/A"),
+                "assigned_ects": parse_float_credits(entry.get("ulpgc_credits", 0)),
+                "lut_total_ects": parse_float_credits(entry.get("lut_credits", 0)),
+                "lut_semester": lut_detail.get("periods", ""),
+                "lut_content": lut_detail.get("content", ""),
+            })
+    return ram_matches
+
+
+def export_ram_markdown(assignments: dict[str, list[dict]], courses_dict: dict[str, dict], ulpgc_courses: list[dict], output_file: str = "RAM_emparejamientos.md") -> bool:
+    """Exporta el RAM en el formato Markdown oficial (mejora 9: exportación más rica).
+
+    Mucho más fácil de revisar antes de trasladarlo al documento de
+    reconocimiento interno oficial que el JSON plano.
     """
-    from itertools import groupby
-    
-    # Construimos un diccionario rápido de cursos ULPGC para acceder a sus resultados
-    ulpgc_map = {c["code"]: c for c in ulpgc_courses}
-    
-    # Separamos en obligatorias y optativas
-    mandatory = [m for m in ram_matches if ulpgc_map.get(m["ulpgc_code"], {}).get("is_mandatory", True)]
-    elective  = [m for m in ram_matches if not ulpgc_map.get(m["ulpgc_code"], {}).get("is_mandatory", True)]
-    
-    md = ""
-    md += "# RAM 2627 - Tabla de Emparejamientos\n\n"
-    md += "> Generado automáticamente. Revisa antes de enviar.\n\n"
-    
-    # ============================
-    # PARTE 1: TABLA RESUMEN
-    # ============================
-    md += "## Tabla Resumen\n\n"
-    
-    def render_section(title: str, matches: list):
-        if not matches:
-            return ""
-        section = f"### {title}\n\n"
-        section += "| Código ULPGC | Asignatura ULPGC | ECTS ULPGC | Código destino | Asignatura destino (semestre) | ECTS destino |\n"
-        section += "|---|---|---|---|---|---|\n"
-        
-        # Agrupamos por código ULPGC para manejar fraccionamientos
-        sorted_matches = sorted(matches, key=lambda x: x["ulpgc_code"])
-        for ulpgc_code, group in groupby(sorted_matches, key=lambda x: x["ulpgc_code"]):
-            items = list(group)
-            ulpgc_info = ulpgc_map.get(ulpgc_code, {})
-            ulpgc_name = ulpgc_info.get("name", "")
-            ulpgc_sem  = ulpgc_info.get("semester", "")
-            ulpgc_ects = ulpgc_info.get("ects", "")
-            
-            for i, item in enumerate(items):
-                # Formato ECTS destino: "N" si es completo, "N/M" si fracciona
-                total_lut_ects = item.get("lut_total_ects", item.get("assigned_ects"))
-                assigned = item["assigned_ects"]
-                if assigned == total_lut_ects:
-                    ects_str = str(int(assigned) if assigned == int(assigned) else assigned)
-                else:
-                    ects_str = f"{assigned}/{int(total_lut_ects) if total_lut_ects == int(total_lut_ects) else total_lut_ects}"
-                
-                lut_sem = item.get("lut_semester", "")
-                lut_name_sem = f"{item['lut_name']} [{lut_sem}]" if lut_sem else item['lut_name']
-                
-                if i == 0:
-                    # Primera fila: datos ULPGC completos
-                    section += f"| {ulpgc_code} | {ulpgc_name} [{ulpgc_sem} sem] | {ulpgc_ects} | {item['lut_code']} | {lut_name_sem} | {ects_str} |\n"
-                else:
-                    # Filas siguientes: solo datos LUT (ULPGC queda vacío)
-                    section += f"| | | | {item['lut_code']} | {lut_name_sem} | {ects_str} |\n"
-        
-        return section + "\n"
-    
-    md += render_section("ASIGNATURAS OBLIGATORIAS", mandatory)
-    md += render_section("ASIGNATURAS OPTATIVAS", elective)
-    
-    # ============================
-    # PARTE 2: DETALLE DE COMPARATIVA
-    # ============================
-    md += "---\n\n## Detalle de la Comparativa\n\n"
-    
-    emparejamiento_num = 1
-    sorted_all = sorted(ram_matches, key=lambda x: x["ulpgc_code"])
-    for ulpgc_code, group in groupby(sorted_all, key=lambda x: x["ulpgc_code"]):
-        items = list(group)
-        ulpgc_info = ulpgc_map.get(ulpgc_code, {})
-        ulpgc_name = ulpgc_info.get("name", "")
-        ulpgc_outcomes = ulpgc_info.get("outcomes", "(Resultados de aprendizaje no disponibles)")
-        
-        md += f"### EMPAREJAMIENTO {emparejamiento_num}:\n\n"
-        md += f"| Nombre asignatura local: {ulpgc_name} | Nombre asignatura destino 1: {items[0]['lut_name']} |\n"
-        md += "|---|---|\n"
-        
-        # Filas para cada destino (puede haber varios si se fracciona)
-        for i, item in enumerate(items):
-            # Columna izquierda: resultados ULPGC (se repite en cada fila según el formato oficial)
-            left_col = ulpgc_outcomes.replace("\n", " ").replace("|", "/")
-            
-            # Columna derecha: código + créditos del destino
-            total_lut = item.get("lut_total_ects", item["assigned_ects"])
-            if item["assigned_ects"] == total_lut:
-                ects_info = f"{int(total_lut)} ECTS"
-            else:
-                ects_info = f"{item['assigned_ects']}/{int(total_lut)} ECTS"
-            
-            if i == 0:
-                right_col = f"**Código destino y nº créditos 1:** {item['lut_code']} ({ects_info})"
-            else:
-                right_col = f"**Código destino y nº créditos {i+1}:** {item['lut_code']} ({ects_info})"
-            
-            md += f"| {left_col} | {right_col} |\n"
-            
-            # Fila adicional con los contenidos del destino
-            lut_content = (item.get("lut_content", "") or "").replace("\n", " ").replace("|", "/")
-            if len(lut_content) > 500:
-                lut_content = lut_content[:500] + "..."
-            md += f"| {left_col} | **Contenidos {i+1}:** {lut_content} |\n"
-        
-        md += "\n"
-        emparejamiento_num += 1
-    
-    # ============================
-    # RESUMEN DE ASIGNATURAS PENDIENTES
-    # ============================
-    matched_codes = {m["ulpgc_code"] for m in ram_matches}
-    pending = [c for c in ulpgc_courses if c["code"] not in matched_codes]
-    if pending:
-        md += "---\n\n## ⚠️ Asignaturas NO emparejadas\n\n"
-        for c in pending:
-            md += f"- **{c['code']}** - {c['name']} ({c['ects']} ECTS)\n"
-    
-    return md
+    if not assignments:
+        console.print("[yellow]No hay asignaciones para exportar.[/yellow]")
+        return False
+
+    try:
+        ram_matches = build_ram_matches(assignments, courses_dict)
+        markdown = generate_ram_markdown(ram_matches, ulpgc_courses)
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(markdown)
+        console.print(f"[green]✓ RAM exportado en Markdown en {output_file}[/green]")
+        return True
+    except Exception as e:
+        console.print(f"[red]✗ Error al exportar Markdown: {e}[/red]")
+        return False
+
 
 def save_assignments_to_json(assignments: dict[str, list[dict]], courses_dict: dict[str, dict], output_file: str = "emparejamientos.json") -> bool:
     """Exporta las asignaciones actuales a un archivo JSON."""
@@ -1143,21 +1339,25 @@ def main() -> None:
     courses_dict = {course["code"]: course for course in ulpgc_data}
     assignments: dict[str, list[dict]] = {}
     lut_assignments: dict[str, list[str]] = {}
-    config = {"show_optatives": False}
+    config = {"show_optatives": False, "semester_filter": None, "show_master_or_higher": True}
 
     # Mostrar explicación de funcionalidades al arrancar
     console.print("\n[bold cyan]BIENVENIDO AL MATCHER ULPGC ↔ LUT[/bold cyan]\n")
     console.print("[dim]Este programa te ayuda a encontrar equivalencias entre cursos ULPGC y cursos LUT.\n[/dim]")
     console.print("[bold]Opciones principales del menú:[/bold]")
-    console.print("  1. [bold]Seleccionar asignatura[/bold] → Busca equivalencias para un curso ULPGC")
-    console.print("  2. [bold]Ver emparejamientos[/bold] → Muestra todas las asignaciones actuales")
-    console.print("  3. [bold]Estado de capacidad[/bold] → Ver cuántos créditos quedan disponibles en cada LUT")
-    console.print("  4. [bold]Procesar obligatorias[/bold] → Busca automáticamente equivalencias para todas las obligatorias sin asignar")
-    console.print("  5. [bold]Revisar todo[/bold] → Revisa todas las asignaturas no asignadas")
-    console.print("  6. [bold]Guardar resultados[/bold] → Exporta tus emparejamientos a un archivo JSON")
-    console.print("  7. [bold]Configuración[/bold] → Activa/desactiva mostrar asignaturas optativas")
-    console.print("  q. [bold]Salir[/bold] → Termina el programa\n")
-    console.print("[yellow]💡 Dentro de cada búsqueda, presiona 'c' para ver combinaciones de múltiples cursos LUT.\n[/yellow]")
+    console.print("  1. [bold]Seleccionar asignatura[/bold] -> Busca equivalencias para un curso ULPGC")
+    console.print("  2. [bold]Ver emparejamientos[/bold] -> Muestra todas las asignaciones actuales")
+    console.print("  3. [bold]Estado de capacidad[/bold] -> Ver cuántos créditos quedan disponibles en cada LUT")
+    console.print("  4. [bold]Procesar obligatorias[/bold] -> Busca automáticamente equivalencias para todas las obligatorias sin asignar")
+    console.print("  5. [bold]Revisar todo[/bold] -> Revisa todas las asignaturas no asignadas")
+    console.print("  6. [bold]Guardar resultados[/bold] -> Exporta tus emparejamientos a un archivo JSON")
+    console.print("  7. [bold]Configuración[/bold] -> Activa/desactiva mostrar asignaturas optativas")
+    console.print("  8. [bold]Exportar RAM en Markdown[/bold] -> Genera el documento oficial listo para revisar")
+    console.print("  q. [bold]Salir[/bold] -> Termina el programa\n")
+    console.print(
+        "[yellow]💡 Dentro de cada búsqueda: 'c' combinaciones · 'a' añadir curso LUT manualmente · "
+        "'m' ver más candidatos · 'v'+num vista detallada · varios números (ej. 1,3,5) para selección múltiple.\n[/yellow]"
+    )
 
     while True:
         console.print("\n[bold cyan]═══════════ MENÚ PRINCIPAL ═══════════[/bold cyan]")
@@ -1168,9 +1368,10 @@ def main() -> None:
         console.print("  5. Revisar todas las sin asignar")
         console.print("  6. Guardar resultados (JSON)")
         console.print("  7. Configuración")
+        console.print("  8. Exportar RAM en Markdown")
         console.print("  q. Salir\n")
 
-        choice = input("Selecciona opción (1-7, q): ").strip().lower()
+        choice = input("Selecciona opción (1-8, q): ").strip().lower()
         if choice == "q":
             console.print("[cyan]¡Hasta luego![/cyan]\n")
             break
@@ -1182,7 +1383,7 @@ def main() -> None:
             if course.get("type") == "optativa" and not config["show_optatives"]:
                 if not prompt_yes_no("Esta asignatura es optativa. ¿Deseas continuar?", default=False):
                     continue
-            search_and_review_course(course, assignments, lut_assignments, config)
+            search_and_review_course(course, assignments, lut_assignments, config, courses_dict)
         elif choice == "2":
             show_assignment_summary(assignments, courses_dict)
         elif choice == "3":
@@ -1195,9 +1396,11 @@ def main() -> None:
                     continue
                 if course["code"] in assignments:
                     continue
+                if not course_matches_filters(course, config):
+                    continue
                 processed += 1
                 console.print(f"[dim][{processed}][/dim] ", end="")
-                search_and_review_course(course, assignments, lut_assignments, config)
+                search_and_review_course(course, assignments, lut_assignments, config, courses_dict)
             console.print(f"[green]Procesadas {processed} asignaturas.[/green]")
         elif choice == "5":
             console.print("[cyan]Revisando todas las asignaturas sin asignar...[/cyan]\n")
@@ -1205,11 +1408,11 @@ def main() -> None:
             for course in ulpgc_data:
                 if course["code"] in assignments:
                     continue
-                if course.get("type") == "optativa" and not config["show_optatives"]:
+                if not course_matches_filters(course, config):
                     continue
                 processed += 1
                 console.print(f"[dim][{processed}][/dim] ", end="")
-                search_and_review_course(course, assignments, lut_assignments, config)
+                search_and_review_course(course, assignments, lut_assignments, config, courses_dict)
             console.print(f"[green]Revisadas {processed} asignaturas.[/green]")
         elif choice == "6":
             if assignments:
@@ -1221,6 +1424,24 @@ def main() -> None:
             config["show_optatives"] = prompt_yes_no(
                 f"Mostrar asignaturas optativas [{'sí' if config['show_optatives'] else 'no'}]?", default=config["show_optatives"]
             )
+            config["show_master_or_higher"] = prompt_yes_no(
+                f"Mostrar cursos LUT de nivel master o superior [{'sí' if config['show_master_or_higher'] else 'no'}]?",
+                default=config["show_master_or_higher"],
+            )
+            semester_answer = input(
+                f"Filtro de semestre actual [{semester_filter_label(config)}]. "
+                "Escribe 1-10, 'todos' para quitar el filtro, o Enter para mantener: "
+            ).strip().lower()
+            if semester_answer:
+                if semester_answer == "todos":
+                    config["semester_filter"] = None
+                else:
+                    try:
+                        config["semester_filter"] = int(semester_answer)
+                    except ValueError:
+                        console.print("[yellow]Semestre no válido. Se mantiene la configuración anterior.[/yellow]")
+        elif choice == "8":
+            export_ram_markdown(assignments, courses_dict, ulpgc_data)
         else:
             console.print("[red]❌ Opción no reconocida. Intenta de nuevo.[/red]")
 
