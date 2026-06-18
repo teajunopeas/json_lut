@@ -5,8 +5,10 @@
     "content": "Números complejos y topología en el campo complejo\nFunciones de variable compleja\nTeorema de Cauchy y aplicaciones\nSeries en el campo complejo\nTeorema de los residuos y aplicaciones\nSeries de Fourier",
     "learningOutcomes": "Dominar las manipulaciones básicas con números complejos, desigualdades y representaciones geométricas.\nManejar las nociones de funciones analíticas y armónicas.\nAsimilar los enunciados y las aplicaciones prácticas de los distintos teoremas integrales de Cauchy.\nDominar las aplicaciones del cálculo de residuos.\nOperar formalmente con series de Fourier.",
     "year": "Tercer Curso",
+    "semester": 5,
     "coursePeriod": "Primer Semestre",
     "teaching_methodology": "Enseñanza directa expositiva y demostrativa para aquellos contenidos esenciales o que requieran de una explicación detallada por parte del profesor.\nDesarrollo de actividades dirigidas a la aplicación de conocimientos y a la contextualización del aprendizaje teórico por medio de supuestos prácticos, favoreciendo la autonomía y la capacidad de reflexión de los estudiantes, así como fomentando las habilidades interpersonales por medio del trabajo en equipo.",
+    "is_manadatory": "true",
     "acronym": "AMIII",
     "credits": "7.5",
     "university": "ULPGC",
@@ -21,7 +23,9 @@
       "fourier series",
       "complex integration",
       "harmonic functions"
-    ]
+    ],
+    "is_mandatory": true,
+    "ects": 7.5
   },
   {
     "code": "49190",
@@ -45,7 +49,10 @@
       "interference",
       "laser technology",
       "coherence"
-    ]
+    ],
+    "semester": 5,
+    "is_mandatory": true,
+    "ects": 6.0
   },
   {
     "code": "49189",
@@ -53,6 +60,7 @@
     "content": "Introducción a la estadística\nEstadística descriptiva\nEl modelo lineal: regresión, análisis de la varianza, análisis de la covarianza\nExtensiones, modelos multivariantes\nIntroducción a la estadística Bayesiana",
     "learningOutcomes": "Reconocer, plantear y resolver problemas estadísticos.\nManejar e interpretar correctamente el grado de relación entre variables.\nDominar las principales propiedades de los estimadores y los métodos básicos de construcción de los mismos.\nConstruir, interpretar y utilizar intervalos de confianza y contrastes de hipótesis.\nManejar, a nivel básico, programas informáticos de estadística.",
     "year": "Tercer Curso",
+    "semester": 5,
     "coursePeriod": "Primer Semestre",
     "teaching_methodology": "Enseñanza directa expositiva y demostrativa para aquellos contenidos esenciales o que requieran de una explicación detallada por parte del profesor.\nDesarrollo de actividades dirigidas a la aplicación de conocimientos y a la contextualización del aprendizaje teórico por medio de supuestos prácticos, favoreciendo la autonomía y la capacidad de reflexión de los estudiantes, así como fomentando las habilidades interpersonales por medio del trabajo en equipo.",
     "acronym": "EST",
@@ -69,7 +77,9 @@
       "hypothesis testing",
       "bayesian statistics",
       "statistical inference"
-    ]
+    ],
+    "is_mandatory": true,
+    "ects": 6.0
   },
   {
     "code": "49191",
@@ -93,7 +103,10 @@
       "variational method",
       "eigenvalues",
       "quantum states"
-    ]
+    ],
+    "semester": 5,
+    "is_mandatory": true,
+    "ects": 7.5
   },
   {
     "code": "49192",
@@ -117,7 +130,10 @@
       "heat equation",
       "separation of variables",
       "mathematical physics"
-    ]
+    ],
+    "semester": 5,
+    "is_mandatory": true,
+    "ects": 3.0
   },
   {
     "code": "49201",
@@ -141,7 +157,10 @@
       "optimization",
       "classification",
       "time series analysis"
-    ]
+    ],
+    "semester": 6,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49193",
@@ -165,7 +184,10 @@
       "semiconductors",
       "electronic structure",
       "superconductivity"
-    ]
+    ],
+    "semester": 6,
+    "is_mandatory": true,
+    "ects": 7.5
   },
   {
     "code": "49195",
@@ -189,7 +211,10 @@
       "dimensional analysis",
       "turbulence",
       "magnetohydrodynamics"
-    ]
+    ],
+    "semester": 6,
+    "is_mandatory": true,
+    "ects": 6.0
   },
   {
     "code": "49202",
@@ -213,7 +238,10 @@
       "ionization",
       "magnetic confinement",
       "plasma applications"
-    ]
+    ],
+    "semester": 6,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49203",
@@ -237,7 +265,10 @@
       "ocean circulation",
       "vorticity dynamics",
       "stratified flow"
-    ]
+    ],
+    "semester": 6,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49204",
@@ -261,7 +292,10 @@
       "neyman pearson",
       "nonparametric inference",
       "goodness of fit"
-    ]
+    ],
+    "semester": 6,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49194",
@@ -285,7 +319,10 @@
       "data acquisition",
       "electronic instrumentation",
       "virtual instrumentation"
-    ]
+    ],
+    "semester": 6,
+    "is_mandatory": true,
+    "ects": 4.5
   },
   {
     "code": "49196",
@@ -309,7 +346,10 @@
       "galerkin method",
       "functional analysis",
       "numerical stability"
-    ]
+    ],
+    "semester": 6,
+    "is_mandatory": true,
+    "ects": 6.0
   },
   {
     "code": "49197",
@@ -333,7 +373,10 @@
       "hilbert spaces",
       "fourier transform",
       "trigonometric series"
-    ]
+    ],
+    "semester": 7,
+    "is_mandatory": true,
+    "ects": 6.0
   },
   {
     "code": "49205",
@@ -357,7 +400,10 @@
       "numerical simulation",
       "data assimilation",
       "risk analysis"
-    ]
+    ],
+    "semester": 7,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49206",
@@ -381,7 +427,10 @@
       "optical absorption",
       "photoconductivity",
       "photonics"
-    ]
+    ],
+    "semester": 7,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49207",
@@ -405,7 +454,10 @@
       "radiation shielding",
       "radiological protection",
       "nuclear applications"
-    ]
+    ],
+    "semester": 7,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49200",
@@ -429,7 +481,10 @@
       "statistical ensembles",
       "thermodynamics",
       "dynamical systems"
-    ]
+    ],
+    "semester": 7,
+    "is_mandatory": true,
+    "ects": 6.0
   },
   {
     "code": "49198",
@@ -453,7 +508,10 @@
       "quantum technologies",
       "second quantization",
       "quantum mechanics"
-    ]
+    ],
+    "semester": 7,
+    "is_mandatory": true,
+    "ects": 6.0
   },
   {
     "code": "49208",
@@ -477,7 +535,10 @@
       "factor analysis",
       "linear models",
       "statistical learning"
-    ]
+    ],
+    "semester": 7,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49199",
@@ -501,7 +562,10 @@
       "project control",
       "scheduling",
       "technical documentation"
-    ]
+    ],
+    "semester": 7,
+    "is_mandatory": true,
+    "ects": 6.0
   },
   {
     "code": "49209",
@@ -525,7 +589,10 @@
       "quantum applications",
       "quantum information",
       "quantum circuits"
-    ]
+    ],
+    "semester": 8,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49210",
@@ -549,7 +616,10 @@
       "sampling methods",
       "bayesian linear models",
       "data analysis"
-    ]
+    ],
+    "semester": 8,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49211",
@@ -573,7 +643,10 @@
       "matter interactions",
       "computational physics",
       "partial differential equations"
-    ]
+    ],
+    "semester": 8,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49212",
@@ -597,7 +670,10 @@
       "network structure",
       "graph theory",
       "network resilience"
-    ]
+    ],
+    "semester": 8,
+    "is_mandatory": false,
+    "ects": 3.0
   },
   {
     "code": "49213",
@@ -621,7 +697,10 @@
       "engineering practice",
       "real world project",
       "work experience"
-    ]
+    ],
+    "semester": 8,
+    "is_mandatory": true,
+    "ects": 12.0
   },
   {
     "code": "49214",
@@ -645,6 +724,9 @@
       "research project",
       "technical documentation",
       "academic writing"
-    ]
+    ],
+    "semester": 8,
+    "is_mandatory": true,
+    "ects": 12.0
   }
 ]

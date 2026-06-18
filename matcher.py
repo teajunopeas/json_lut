@@ -19,22 +19,21 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table
+from rich.panel import Panel
 from sentence_transformers import SentenceTransformer, util
 
 console = Console()
 DB_PATH = Path("lut_courses.db")
 ULPGC_PATH = Path("ulpgc_courses.json")
 MODEL_NAME = "all-MiniLM-L6-v2"
-MODEL_CACHE_DIR = Path(".cache")
 MATCH_THRESHOLD = 75.0
 SEARCH_LIMIT = 40
 RESULT_LIMIT = 10
 
-os.environ.setdefault("TRANSFORMERS_CACHE", str(MODEL_CACHE_DIR))
 console.print(
-    f"[cyan]Cargando modelo de embeddings ({MODEL_NAME}) desde caché local {MODEL_CACHE_DIR}...[/cyan]"
+    f"[cyan]Cargando modelo de embeddings ({MODEL_NAME})...[/cyan]"
 )
-model = SentenceTransformer(MODEL_NAME, cache_folder=str(MODEL_CACHE_DIR))
+model = SentenceTransformer(MODEL_NAME)
 
 
 def load_ulpgc_courses(path: Path = ULPGC_PATH) -> list[dict]:
@@ -118,6 +117,10 @@ def score_similarity(course: dict, candidates: list[dict]) -> list[dict]:
         course.get("name", ""),
     )
 
+    ulpgc_content_emb = model.encode(ulpgc_content, convert_to_tensor=True)
+    ulpgc_outcomes_emb = model.encode(ulpgc_outcomes, convert_to_tensor=True)
+    ulpgc_combined_emb = model.encode(ulpgc_combined, convert_to_tensor=True)
+
     scored = []
     for candidate in candidates:
         lut_content = prepare_text(candidate["content"], "", candidate.get("name", ""))
@@ -128,9 +131,15 @@ def score_similarity(course: dict, candidates: list[dict]) -> list[dict]:
             candidate.get("name", ""),
         )
 
-        content_score = similarity_percent(ulpgc_content, lut_content)
-        outcomes_score = similarity_percent(ulpgc_outcomes, lut_outcomes)
-        combined_score = similarity_percent(ulpgc_combined, lut_combined)
+        lut_content_emb = model.encode(lut_content, convert_to_tensor=True)
+        lut_outcomes_emb = model.encode(lut_outcomes, convert_to_tensor=True)
+        lut_combined_emb = model.encode(lut_combined, convert_to_tensor=True)
+
+        # Calcular sumilitudes con los tensores
+        content_score = round(util.cos_sim(ulpgc_content_emb, lut_content_emb).item() * 100, 1)
+        outcomes_score = round(util.cos_sim(ulpgc_outcomes_emb, lut_outcomes_emb).item() * 100, 1)
+        combined_score = round(util.cos_sim(ulpgc_combined_emb, lut_combined_emb).item() * 100, 1)
+
         best_score = max(content_score, outcomes_score, combined_score)
 
         scored.append({
@@ -231,6 +240,18 @@ def review_candidates(scored: list[dict]) -> dict | None:
                 console.print("[red]Entrada invalida para JSON.[/red]")
                 continue
             console.print_json(data=scored[index])
+            continue
+        if choice.startswith("v"):
+            selection = choice[1:].strip()
+            try:
+                index = int(selection) - 1
+                if index < 0 or index >= min(RESULT_LIMIT, len(scored)):
+                    console.print("[red]Numero fuera de rango.[/red]")
+                    continue
+            except ValueError:
+                console.print("[red]Entrada invalida. Usa 'v 1' para ver el candidato 1.[/red]")
+                continue
+            preview_candidate(scored[index], rank=index + 1)
             continue
 
         if choice == "c":
@@ -629,6 +650,76 @@ def show_assignment_summary(assignments: dict[str, list[dict]], courses: dict[st
 
     console.print(table)
 
+def preview_candidate(candidate: dict, rank: int) -> None:
+    """Muestra un candidato LUT con formato estructurado y legible.
+    
+    Organiza la información en secciones claramente diferenciadas:
+    metadatos académicos, resultados de aprendizaje, contenidos,
+    equivalencias declaradas y prerrequisitos.
+    """
+    # --- Metadatos académicos (cabecera del panel) ---
+    header_parts = []
+    if candidate.get("course_level"):
+        header_parts.append(f"[bold blue]Nivel:[/bold blue] {candidate['course_level']}")
+    if candidate.get("credits_min") == candidate.get("credits_max"):
+        header_parts.append(f"[bold yellow]ECTS:[/bold yellow] {candidate['credits_min']}")
+    else:
+        header_parts.append(
+            f"[bold yellow]ECTS:[/bold yellow] "
+            f"{candidate['credits_min']}-{candidate['credits_max']}"
+        )
+    if candidate.get("language"):
+        header_parts.append(f"[cyan]Idioma:[/cyan] {candidate['language']}")
+    if candidate.get("periods"):
+        header_parts.append(f"[magenta]Periodos LUT:[/magenta] {candidate['periods']}")
+    if candidate.get("is_exchange"):
+        header_parts.append("[bold green]Exchange[/bold green]")
+
+    header = " | ".join(header_parts) if header_parts else "Sin metadatos disponibles"
+
+    # --- Cuerpo del panel: secciones bien delimitadas ---
+    body_lines = []
+
+    # Resultados de aprendizaje
+    outcomes = candidate.get("learning_outcomes") or "No disponibles"
+    outcomes_clean = outcomes.replace("\n", "\n    ")
+    body_lines.append("[bold magenta]RESULTADOS DE APRENDIZAJE[/bold magenta]")
+    body_lines.append(f"    {outcomes_clean}")
+    body_lines.append("")
+
+    # Contenidos (truncados para mantener la vista legible)
+    content = candidate.get("content") or "No disponibles"
+    if len(content) > 1200:
+        content = content[:1200] + " ... [dim](truncado)[/dim]"
+    content_clean = content.replace("\n", "\n    ")
+    body_lines.append("[bold cyan]CONTENIDOS[/bold cyan]")
+    body_lines.append(f"    {content_clean}")
+    body_lines.append("")
+
+    # Equivalencias declaradas (solo si existen)
+    eq = candidate.get("equivalent_courses")
+    if eq and eq != "Ninguna":
+        body_lines.append("[bold green]EQUIVALENCIAS DECLARADAS POR LUT[/bold green]")
+        body_lines.append(f"    {eq}")
+        body_lines.append("")
+
+    # Prerrequisitos (solo si existen)
+    prereq = candidate.get("prerequisites")
+    if prereq:
+        prereq_short = prereq[:300] + ("..." if len(prereq) > 300 else "")
+        body_lines.append("[dim]Prerrequisitos:[/dim]")
+        body_lines.append(f"    {prereq_short}")
+
+    body = "\n".join(body_lines)
+
+    panel = Panel(
+        body,
+        title=f"[bold]#{rank}  {candidate['code']} - {candidate['name']}[/bold]",
+        subtitle=header,
+        border_style="blue",
+        expand=False,
+    )
+    console.print(panel)
 
 def compare_courses_detailed(ulpgc_course: dict, lut_course: dict) -> None:
     """Compara el contenido detallado de un curso ULPGC vs uno o varios LUT.
@@ -656,6 +747,304 @@ def compare_courses_detailed(ulpgc_course: dict, lut_course: dict) -> None:
 
     console.print("\n[yellow]Nota: Revisa manualmente si la cobertura es suficiente para tu plan de movilidad.[/yellow]\n")
 
+def generate_ram_markdown(ram_matches: list, ulpgc_courses: list) -> str:
+    """Genera el Markdown completo del RAM siguiendo el formato oficial ULPGC.
+    
+    Estructura de salida:
+      - Parte 1: Tabla resumen separada en ASIGNATURAS OBLIGATORIAS y OPTATIVAS.
+      - Parte 2: Detalle de la comparativa por emparejamiento.
+      - Parte 3: Listado de asignaturas no emparejadas (si las hay).
+    
+    Las asignaturas no emparejadas se omiten de las tablas principales
+    y se listan al final. Las parcialmente emparejadas se incluyen.
+    """
+    from itertools import groupby
+
+    ulpgc_map = {c["code"]: c for c in ulpgc_courses}
+
+    # Separación obligatorias / optativas
+    mandatory = [
+        m for m in ram_matches
+        if ulpgc_map.get(m["ulpgc_code"], {}).get("is_mandatory", True)
+    ]
+    elective = [
+        m for m in ram_matches
+        if not ulpgc_map.get(m["ulpgc_code"], {}).get("is_mandatory", True)
+    ]
+
+    md_lines = []
+    md_lines.append("# RAM 2627 - Tabla de Emparejamientos")
+    md_lines.append("")
+    md_lines.append("> Generado automaticamente. Revisar antes de enviar.")
+    md_lines.append("")
+
+    # ============================================================
+    # PARTE 1: TABLA RESUMEN
+    # ============================================================
+    md_lines.append("## Tabla Resumen")
+    md_lines.append("")
+
+    def render_section(title: str, matches: list) -> str:
+        if not matches:
+            return ""
+        section_lines = []
+        section_lines.append(f"### {title}")
+        section_lines.append("")
+        section_lines.append(
+            "| Codigo ULPGC | Asignatura ULPGC | ECTS ULPGC "
+            "| Codigo destino | Asignatura destino (semestre) | ECTS destino |"
+        )
+        section_lines.append("|---|---|---|---|---|---|")
+
+        sorted_matches = sorted(matches, key=lambda x: x["ulpgc_code"])
+        for ulpgc_code, group in groupby(sorted_matches, key=lambda x: x["ulpgc_code"]):
+            items = list(group)
+            ulpgc_info = ulpgc_map.get(ulpgc_code, {})
+            ulpgc_name = ulpgc_info.get("name", "")
+            ulpgc_sem = ulpgc_info.get("semester", "")
+            ulpgc_ects = ulpgc_info.get("ects", "")
+
+            for i, item in enumerate(items):
+                # Formato ECTS destino: "N" si es completo, "N/M" si fracciona
+                total_lut_ects = item.get("lut_total_ects", item.get("assigned_ects"))
+                assigned = item["assigned_ects"]
+                if assigned == total_lut_ects:
+                    ects_str = (
+                        str(int(assigned))
+                        if assigned == int(assigned)
+                        else str(assigned)
+                    )
+                else:
+                    total_fmt = (
+                        int(total_lut_ects)
+                        if total_lut_ects == int(total_lut_ects)
+                        else total_lut_ects
+                    )
+                    ects_str = f"{assigned}/{total_fmt}"
+
+                lut_sem = item.get("lut_semester", "")
+                lut_name_sem = (
+                    f"{item['lut_name']} [{lut_sem}]" if lut_sem else item["lut_name"]
+                )
+
+                if i == 0:
+                    section_lines.append(
+                        f"| {ulpgc_code} | {ulpgc_name} [{ulpgc_sem} sem] "
+                        f"| {ulpgc_ects} | {item['lut_code']} "
+                        f"| {lut_name_sem} | {ects_str} |"
+                    )
+                else:
+                    # Filas siguientes: solo datos LUT (ULPGC queda vacio)
+                    section_lines.append(
+                        f"| | | | {item['lut_code']} "
+                        f"| {lut_name_sem} | {ects_str} |"
+                    )
+
+        section_lines.append("")
+        return "\n".join(section_lines)
+
+    md_lines.append(render_section("ASIGNATURAS OBLIGATORIAS", mandatory))
+    md_lines.append(render_section("ASIGNATURAS OPTATIVAS", elective))
+
+    # ============================================================
+    # PARTE 2: DETALLE DE LA COMPARATIVA
+    # ============================================================
+    md_lines.append("---")
+    md_lines.append("")
+    md_lines.append("## Detalle de la Comparativa")
+    md_lines.append("")
+
+    emparejamiento_num = 1
+    sorted_all = sorted(ram_matches, key=lambda x: x["ulpgc_code"])
+    for ulpgc_code, group in groupby(sorted_all, key=lambda x: x["ulpgc_code"]):
+        items = list(group)
+        ulpgc_info = ulpgc_map.get(ulpgc_code, {})
+        ulpgc_name = ulpgc_info.get("name", "")
+        ulpgc_outcomes = ulpgc_info.get(
+            "outcomes", "(Resultados de aprendizaje no disponibles)"
+        )
+
+        md_lines.append(f"### EMPAREJAMIENTO {emparejamiento_num}:")
+        md_lines.append("")
+        md_lines.append(
+            f"| Nombre asignatura local: {ulpgc_name} "
+            f"| Nombre asignatura destino 1: {items[0]['lut_name']} |"
+        )
+        md_lines.append("|---|---|")
+
+        for i, item in enumerate(items):
+            # Columna izquierda: resultados ULPGC (se repite en cada fila)
+            left_col = ulpgc_outcomes.replace("\n", " ").replace("|", "/")
+
+            # Columna derecha: codigo + creditos del destino
+            total_lut = item.get("lut_total_ects", item["assigned_ects"])
+            if item["assigned_ects"] == total_lut:
+                ects_info = f"{int(total_lut)} ECTS"
+            else:
+                ects_info = f"{item['assigned_ects']}/{int(total_lut)} ECTS"
+
+            if i == 0:
+                right_col = (
+                    f"**Codigo destino y n credits 1:** "
+                    f"{item['lut_code']} ({ects_info})"
+                )
+            else:
+                right_col = (
+                    f"**Codigo destino y n credits {i + 1}:** "
+                    f"{item['lut_code']} ({ects_info})"
+                )
+
+            md_lines.append(f"| {left_col} | {right_col} |")
+
+            # Fila adicional con los contenidos del destino
+            lut_content = (item.get("lut_content", "") or "").replace("\n", " ").replace("|", "/")
+            if len(lut_content) > 500:
+                lut_content = lut_content[:500] + "..."
+            md_lines.append(
+                f"| {left_col} | **Contenidos {i + 1}:** {lut_content} |"
+            )
+
+        md_lines.append("")
+        emparejamiento_num += 1
+
+    # ============================================================
+    # PARTE 3: ASIGNATURAS NO EMPAREJADAS
+    # ============================================================
+    matched_codes = {m["ulpgc_code"] for m in ram_matches}
+    pending = [c for c in ulpgc_courses if c["code"] not in matched_codes]
+    if pending:
+        md_lines.append("---")
+        md_lines.append("")
+        md_lines.append("## Asignaturas no emparejadas")
+        md_lines.append("")
+        for c in pending:
+            md_lines.append(f"- **{c['code']}** - {c['name']} ({c['ects']} ECTS)")
+        md_lines.append("")
+
+    return "\n".join(md_lines)
+
+
+def generate_ram_markdown(ram_matches: list, ulpgc_courses: list):
+    """
+    Genera el Markdown completo del RAM siguiendo el formato oficial ULPGC:
+      - Parte 1: Tabla resumen (Obligatorias + Optativas)
+      - Parte 2: Detalle de la comparativa por emparejamiento
+    Omite asignaturas no emparejadas, incluye parcialmente emparejadas.
+    """
+    from itertools import groupby
+    
+    # Construimos un diccionario rápido de cursos ULPGC para acceder a sus resultados
+    ulpgc_map = {c["code"]: c for c in ulpgc_courses}
+    
+    # Separamos en obligatorias y optativas
+    mandatory = [m for m in ram_matches if ulpgc_map.get(m["ulpgc_code"], {}).get("is_mandatory", True)]
+    elective  = [m for m in ram_matches if not ulpgc_map.get(m["ulpgc_code"], {}).get("is_mandatory", True)]
+    
+    md = ""
+    md += "# RAM 2627 - Tabla de Emparejamientos\n\n"
+    md += "> Generado automáticamente. Revisa antes de enviar.\n\n"
+    
+    # ============================
+    # PARTE 1: TABLA RESUMEN
+    # ============================
+    md += "## Tabla Resumen\n\n"
+    
+    def render_section(title: str, matches: list):
+        if not matches:
+            return ""
+        section = f"### {title}\n\n"
+        section += "| Código ULPGC | Asignatura ULPGC | ECTS ULPGC | Código destino | Asignatura destino (semestre) | ECTS destino |\n"
+        section += "|---|---|---|---|---|---|\n"
+        
+        # Agrupamos por código ULPGC para manejar fraccionamientos
+        sorted_matches = sorted(matches, key=lambda x: x["ulpgc_code"])
+        for ulpgc_code, group in groupby(sorted_matches, key=lambda x: x["ulpgc_code"]):
+            items = list(group)
+            ulpgc_info = ulpgc_map.get(ulpgc_code, {})
+            ulpgc_name = ulpgc_info.get("name", "")
+            ulpgc_sem  = ulpgc_info.get("semester", "")
+            ulpgc_ects = ulpgc_info.get("ects", "")
+            
+            for i, item in enumerate(items):
+                # Formato ECTS destino: "N" si es completo, "N/M" si fracciona
+                total_lut_ects = item.get("lut_total_ects", item.get("assigned_ects"))
+                assigned = item["assigned_ects"]
+                if assigned == total_lut_ects:
+                    ects_str = str(int(assigned) if assigned == int(assigned) else assigned)
+                else:
+                    ects_str = f"{assigned}/{int(total_lut_ects) if total_lut_ects == int(total_lut_ects) else total_lut_ects}"
+                
+                lut_sem = item.get("lut_semester", "")
+                lut_name_sem = f"{item['lut_name']} [{lut_sem}]" if lut_sem else item['lut_name']
+                
+                if i == 0:
+                    # Primera fila: datos ULPGC completos
+                    section += f"| {ulpgc_code} | {ulpgc_name} [{ulpgc_sem} sem] | {ulpgc_ects} | {item['lut_code']} | {lut_name_sem} | {ects_str} |\n"
+                else:
+                    # Filas siguientes: solo datos LUT (ULPGC queda vacío)
+                    section += f"| | | | {item['lut_code']} | {lut_name_sem} | {ects_str} |\n"
+        
+        return section + "\n"
+    
+    md += render_section("ASIGNATURAS OBLIGATORIAS", mandatory)
+    md += render_section("ASIGNATURAS OPTATIVAS", elective)
+    
+    # ============================
+    # PARTE 2: DETALLE DE COMPARATIVA
+    # ============================
+    md += "---\n\n## Detalle de la Comparativa\n\n"
+    
+    emparejamiento_num = 1
+    sorted_all = sorted(ram_matches, key=lambda x: x["ulpgc_code"])
+    for ulpgc_code, group in groupby(sorted_all, key=lambda x: x["ulpgc_code"]):
+        items = list(group)
+        ulpgc_info = ulpgc_map.get(ulpgc_code, {})
+        ulpgc_name = ulpgc_info.get("name", "")
+        ulpgc_outcomes = ulpgc_info.get("outcomes", "(Resultados de aprendizaje no disponibles)")
+        
+        md += f"### EMPAREJAMIENTO {emparejamiento_num}:\n\n"
+        md += f"| Nombre asignatura local: {ulpgc_name} | Nombre asignatura destino 1: {items[0]['lut_name']} |\n"
+        md += "|---|---|\n"
+        
+        # Filas para cada destino (puede haber varios si se fracciona)
+        for i, item in enumerate(items):
+            # Columna izquierda: resultados ULPGC (se repite en cada fila según el formato oficial)
+            left_col = ulpgc_outcomes.replace("\n", " ").replace("|", "/")
+            
+            # Columna derecha: código + créditos del destino
+            total_lut = item.get("lut_total_ects", item["assigned_ects"])
+            if item["assigned_ects"] == total_lut:
+                ects_info = f"{int(total_lut)} ECTS"
+            else:
+                ects_info = f"{item['assigned_ects']}/{int(total_lut)} ECTS"
+            
+            if i == 0:
+                right_col = f"**Código destino y nº créditos 1:** {item['lut_code']} ({ects_info})"
+            else:
+                right_col = f"**Código destino y nº créditos {i+1}:** {item['lut_code']} ({ects_info})"
+            
+            md += f"| {left_col} | {right_col} |\n"
+            
+            # Fila adicional con los contenidos del destino
+            lut_content = (item.get("lut_content", "") or "").replace("\n", " ").replace("|", "/")
+            if len(lut_content) > 500:
+                lut_content = lut_content[:500] + "..."
+            md += f"| {left_col} | **Contenidos {i+1}:** {lut_content} |\n"
+        
+        md += "\n"
+        emparejamiento_num += 1
+    
+    # ============================
+    # RESUMEN DE ASIGNATURAS PENDIENTES
+    # ============================
+    matched_codes = {m["ulpgc_code"] for m in ram_matches}
+    pending = [c for c in ulpgc_courses if c["code"] not in matched_codes]
+    if pending:
+        md += "---\n\n## ⚠️ Asignaturas NO emparejadas\n\n"
+        for c in pending:
+            md += f"- **{c['code']}** - {c['name']} ({c['ects']} ECTS)\n"
+    
+    return md
 
 def save_assignments_to_json(assignments: dict[str, list[dict]], courses_dict: dict[str, dict], output_file: str = "emparejamientos.json") -> bool:
     """Exporta las asignaciones actuales a un archivo JSON."""
