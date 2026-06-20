@@ -56,6 +56,12 @@ models/
 # Logs
 *.log
 
+# Matcher generated state
+emparejamientos.json
+tmp_ram_test*.md
+RAM_emparejamientos*.md
+*_desglose_cobertura.md
+
 # OS
 .DS_Store
 Thumbs.db
