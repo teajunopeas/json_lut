@@ -2,6 +2,8 @@
 .venv/
 venv/
 env/
+.venv_clean/
+.venv_clon/
 
 # Python
 __pycache__/
@@ -35,39 +37,45 @@ MANIFEST
 *.swo
 *~
 
-# Database
+# Database / caches
 *.db
-
-# Test outputs (keep test files but not outputs)
-test_output.json
-test_periods.json
-test_periods2.json
-
-# Cache
 .pytest_cache/
 .coverage
 htmlcov/
 .cache/
-models/
 
-# Packaging
-*.spec
-
-# Logs
+# Logs / temporales
 *.log
+*.tmp
+*.temp
 
-# Matcher generated state
+# Directorios de trabajo local y salidas
+/tmp/
+tmp/
+output/
+out/
+results/
+
+# Modelos pesados y artefactos locales
+models/
+*.pkl
+*.bin
+
+# Archivos generados localmente por la herramienta
 emparejamientos.json
-tmp_ram_test*.md
-RAM_emparejamientos*.md
-*_desglose_cobertura.md
+lut_courses.db
+
+# Archivos de prueba locales o de debug
+test_output.json
+test_periods.json
+test_periods2.json
+check_json.py
+check_db.py
+debug_matcher.py
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Temporal/Debug scripts
-check_json.py
-check_db.py
-debug_matcher.py
-
+# Personal files
+documentos/

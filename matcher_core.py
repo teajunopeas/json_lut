@@ -559,19 +559,17 @@ def generate_ram_markdown(ram_matches: list, ulpgc_courses: list) -> str:
         section_lines = []
         section_lines.append(f"### {title}")
         section_lines.append("")
-        section_lines.append(
-            "| Codigo ULPGC | Asignatura ULPGC | ECTS ULPGC "
-            "| Codigo destino | Asignatura destino (semestre) | ECTS destino |"
-        )
-        section_lines.append("|---|---|---|---|---|---|")
 
         sorted_matches = sorted(matches, key=lambda x: x["ulpgc_code"])
         for ulpgc_code, group in groupby(sorted_matches, key=lambda x: x["ulpgc_code"]):
+            section_lines.append("| ULPGC | ECTS ULPGC | LUT | ECTS destino |")
+            section_lines.append("|---|---:|---|---:|")
             items = list(group)
             ulpgc_info = ulpgc_map.get(ulpgc_code, {})
             ulpgc_name = ulpgc_info.get("name", "")
             ulpgc_sem = ulpgc_info.get("semester", "")
             ulpgc_ects = get_ulpgc_credits(ulpgc_info)
+            ulpgc_label = f"**{ulpgc_code}** - {ulpgc_name} [{ulpgc_sem} sem]"
 
             for index, item in enumerate(items):
                 total_lut_ects = item.get("lut_total_ects", item.get("assigned_ects"))
@@ -591,21 +589,22 @@ def generate_ram_markdown(ram_matches: list, ulpgc_courses: list) -> str:
                     ects_str = f"{assigned}/{total_fmt}"
 
                 lut_sem = item.get("lut_semester", "")
-                lut_name_sem = (
-                    f"{item['lut_name']} [{lut_sem}]" if lut_sem else item["lut_name"]
+                lut_label = (
+                    f"**{item['lut_code']}** - {item['lut_name']} [{lut_sem}]"
+                    if lut_sem else
+                    f"**{item['lut_code']}** - {item['lut_name']}"
                 )
 
                 if index == 0:
                     section_lines.append(
-                        f"| {ulpgc_code} | {ulpgc_name} [{ulpgc_sem} sem] "
-                        f"| {ulpgc_ects} | {item['lut_code']} "
-                        f"| {lut_name_sem} | {ects_str} |"
+                        f"| {ulpgc_label} | {ulpgc_ects} | {lut_label} | {ects_str} |"
                     )
                 else:
                     section_lines.append(
-                        f"| | | | {item['lut_code']} "
-                        f"| {lut_name_sem} | {ects_str} |"
+                        f"|  |  | {lut_label} | {ects_str} |"
                     )
+
+            section_lines.append("")
 
         section_lines.append("")
         return "\n".join(section_lines)
@@ -789,7 +788,7 @@ def assign_candidate_non_interactive(
         candidate_credits = parse_float_credits(candidate.get("credits_min", 0))
 
     can_assign, remaining = can_use_same_lut(candidate, ulpgc_credits, lut_assignments, assignments)
-    if not can_assign and candidate.get("code") in lut_assignments:
+    if not can_assign:
         return False, f"Capacidad insuficiente en {candidate.get('code')} ({remaining:.1f} ECTS libres)"
 
     ulpgc_code = course.get("code")

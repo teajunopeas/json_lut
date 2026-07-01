@@ -387,7 +387,7 @@ def assign_candidate(course: dict, candidate: dict, assignments: dict[str, list[
         candidate_credits = parse_float_credits(candidate.get("credits_min", 0))
 
     can_assign, remaining = can_use_same_lut(candidate, ulpgc_credits, lut_assignments, assignments)
-    if not can_assign and candidate.get("code") in lut_assignments:
+    if not can_assign:
         assigned = lut_assignments.get(candidate.get("code"), [])
         console.print(
             f"[yellow]Aviso:[/yellow] El curso LUT ya está asignado a {len(assigned)} ULPGC(s), "
@@ -398,6 +398,7 @@ def assign_candidate(course: dict, candidate: dict, assignments: dict[str, list[
             unassign_course(previous_course, assignments, lut_assignments)
             console.print(f"[green]Se ha liberado el curso {previous_course} para su revisión.[/green]\n")
             return False
+        return False
 
     ulpgc_code = course.get("code")
     append = prompt_yes_no("¿Añadir esta asignación además de las existentes?", default=True)
@@ -422,6 +423,42 @@ def assign_candidate(course: dict, candidate: dict, assignments: dict[str, list[
     return True
 
 
+def assign_candidate_with_credits(
+    course: dict,
+    candidate: dict,
+    assigned_credits: float,
+    assignments: dict[str, list[dict]],
+    lut_assignments: dict[str, list[str]],
+) -> bool:
+    """Asigna un curso LUT con una cantidad explícita de créditos ULPGC."""
+    candidate_credits = parse_float_credits(candidate.get("credits_max", 0))
+    if candidate_credits == 0.0:
+        candidate_credits = parse_float_credits(candidate.get("credits_min", 0))
+
+    can_assign, remaining = can_use_same_lut(candidate, assigned_credits, lut_assignments, assignments)
+    if not can_assign:
+        console.print(
+            f"[yellow]Aviso:[/yellow] {candidate.get('code', 'N/A')} no tiene capacidad suficiente "
+            f"({remaining:.1f} ECTS libres)."
+        )
+        return False
+
+    entry = {
+        "lut_code": candidate.get("code", "N/A"),
+        "lut_name": candidate.get("name", "N/A"),
+        "ulpgc_credits": assigned_credits,
+        "lut_credits": candidate_credits,
+    }
+    ulpgc_code = course.get("code")
+    assignments.setdefault(ulpgc_code, []).append(entry)
+    lut_assignments.setdefault(candidate.get("code", ""), []).append(ulpgc_code)
+    console.print(
+        f"[green]Asignado {candidate.get('code', 'N/A')} a {ulpgc_code} "
+        f"con {assigned_credits:.1f} ECTS.[/green]\n"
+    )
+    return True
+
+
 def assign_group(course: dict, candidates: list[dict], assignments: dict[str, list[dict]], lut_assignments: dict[str, list[str]]) -> bool:
     """Asigna uno o varios cursos LUT a un curso ULPGC tras una selección múltiple."""
     if not candidates:
@@ -437,11 +474,22 @@ def assign_combo(course: dict, combo: dict, assignments: dict[str, list[dict]], 
     """Asigna varios cursos LUT a un curso ULPGC de una sola vez."""
     if not combo or not combo.get("candidates"):
         return False
+    remaining_target = get_ulpgc_credits(course)
     success = True
     for candidate in combo["candidates"]:
-        if not assign_candidate(course, candidate, assignments, lut_assignments):
+        available = parse_float_credits(candidate.get("remaining_capacity", 0))
+        if available <= 0:
+            available = parse_float_credits(candidate.get("credits_max", 0)) or parse_float_credits(candidate.get("credits_min", 0))
+        assigned_credits = min(remaining_target, available)
+        if assigned_credits <= 0:
+            continue
+        if not assign_candidate_with_credits(course, candidate, assigned_credits, assignments, lut_assignments):
             success = False
-    return success
+        else:
+            remaining_target -= assigned_credits
+        if remaining_target <= 0:
+            break
+    return success and remaining_target <= 0.0001
 
 
 def render_course_list(courses: list[dict], assignments: dict[str, list[dict]], config: dict) -> None:
