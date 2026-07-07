@@ -506,7 +506,7 @@ def build_ram_matches(assignments: dict[str, list[dict]], courses_dict: dict[str
                 "lut_name": entry.get("lut_name", "N/A"),
                 "assigned_ects": parse_float_credits(entry.get("ulpgc_credits", 0)),
                 "lut_total_ects": parse_float_credits(entry.get("lut_credits", 0)),
-                "lut_semester": lut_detail.get("periods", ""),
+                "lut_semester": entry.get("lut_semester") or lut_detail.get("periods", ""),
                 "lut_content": lut_detail.get("content", ""),
                 "lut_learning_outcomes": lut_detail.get("learning_outcomes", ""),
             })
@@ -703,6 +703,82 @@ def export_ram_markdown(assignments: dict[str, list[dict]], courses_dict: dict[s
     return output_file
 
 
+def validate_assignments(assignments: dict[str, list[dict]], courses_dict: dict[str, dict] | None = None) -> dict:
+    """Valida creditos asignados, uso compartido de LUT y balances ULPGC."""
+    courses_dict = courses_dict or {}
+    errors: list[str] = []
+    warnings: list[str] = []
+    lut_usage: dict[str, dict] = {}
+    ulpgc_balance: list[dict] = []
+
+    for ulpgc_code, entries in assignments.items():
+        course = courses_dict.get(ulpgc_code, {})
+        ulpgc_credits = get_ulpgc_credits(course) if course else 0.0
+        assigned_total = 0.0
+
+        if not course:
+            warnings.append(f"ULPGC {ulpgc_code}: no aparece en el catalogo local.")
+
+        for entry in entries:
+            lut_code = entry.get("lut_code", "N/A")
+            assigned = parse_float_credits(entry.get("ulpgc_credits", 0))
+            lut_max = parse_float_credits(entry.get("lut_credits", 0))
+            assigned_total += assigned
+
+            if assigned < 0:
+                errors.append(f"{ulpgc_code}/{lut_code}: creditos asignados negativos.")
+            if lut_max and assigned > lut_max + 1e-9:
+                errors.append(
+                    f"{ulpgc_code}/{lut_code}: asigna {assigned:g} ECTS sobre un maximo LUT de {lut_max:g}."
+                )
+
+            usage = lut_usage.setdefault(
+                lut_code,
+                {
+                    "name": entry.get("lut_name", ""),
+                    "used_credits": 0.0,
+                    "max_credits": lut_max,
+                    "ulpgc_codes": [],
+                },
+            )
+            usage["used_credits"] += assigned
+            usage["ulpgc_codes"].append(ulpgc_code)
+            if lut_max and usage["max_credits"] and abs(usage["max_credits"] - lut_max) > 1e-9:
+                warnings.append(
+                    f"{lut_code}: aparece con maximos LUT distintos ({usage['max_credits']:g} y {lut_max:g})."
+                )
+            elif lut_max and not usage["max_credits"]:
+                usage["max_credits"] = lut_max
+
+        if course:
+            difference = round(assigned_total - ulpgc_credits, 4)
+            ulpgc_balance.append({
+                "ulpgc_code": ulpgc_code,
+                "ulpgc_name": course.get("name", ""),
+                "ulpgc_credits": ulpgc_credits,
+                "assigned_lut_credits": round(assigned_total, 4),
+                "difference": difference,
+                "status": "deficit" if difference < 0 else "surplus" if difference > 0 else "balanced",
+            })
+
+    for lut_code, usage in lut_usage.items():
+        used = usage["used_credits"]
+        max_credits = usage["max_credits"]
+        if max_credits and used > max_credits + 1e-9:
+            errors.append(
+                f"{lut_code}: uso total {used:g} ECTS supera maximo LUT {max_credits:g} "
+                f"({', '.join(usage['ulpgc_codes'])})."
+            )
+
+    return {
+        "ok": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "lut_usage": lut_usage,
+        "ulpgc_balance": ulpgc_balance,
+    }
+
+
 def save_assignments_to_json(assignments: dict[str, list[dict]], courses_dict: dict[str, dict], output_file: str = "emparejamientos.json") -> bool:
     """Exporta las asignaciones actuales a un archivo JSON."""
     try:
@@ -722,6 +798,7 @@ def save_assignments_to_json(assignments: dict[str, list[dict]], courses_dict: d
                     {
                         "lut_code": entry.get("lut_code", "N/A"),
                         "lut_name": entry.get("lut_name", "N/A"),
+                        "lut_semester": entry.get("lut_semester", ""),
                         "ulpgc_credits_assigned": entry.get("ulpgc_credits", "N/A"),
                         "lut_credits_max": entry.get("lut_credits", "N/A"),
                     }
@@ -757,6 +834,7 @@ def load_assignments_from_json(path: str | Path = "emparejamientos.json") -> dic
                 "lut_name": lut_course.get("lut_name", "N/A"),
                 "ulpgc_credits": parse_float_credits(lut_course.get("ulpgc_credits_assigned", 0)),
                 "lut_credits": parse_float_credits(lut_course.get("lut_credits_max", 0)),
+                "lut_semester": lut_course.get("lut_semester", ""),
             })
         assignments[ulpgc_code] = entries
     return assignments

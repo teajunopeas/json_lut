@@ -47,6 +47,7 @@ from matcher_core import (
     search_lut_courses,
     semester_filter_label,
     unassign_course,
+    validate_assignments,
 )
 
 console = Console()
@@ -768,6 +769,7 @@ def cli_mode() -> None:
     parser.add_argument("--replace", action="store_true", help="Reemplazar asignaciones previas del ULPGC")
     parser.add_argument("--save", action="store_true", help="Guardar asignaciones en JSON")
     parser.add_argument("--export", action="store_true", help="Exportar RAM a Markdown")
+    parser.add_argument("--validate", action="store_true", help="Validar creditos y uso compartido de LUT")
     parser.add_argument("--output", default="RAM_emparejamientos.md", help="Ruta de salida para exportación")
     parser.add_argument("--show-optatives", action="store_true", help="Incluir optativas al filtrar ULPGC")
     parser.add_argument("--semester", type=str, help="Filtro de semestre ULPGC")
@@ -864,6 +866,10 @@ def cli_mode() -> None:
     if args.export:
         output = export_ram_markdown(assignments, courses_dict, courses, output_file=args.output)
         print(json.dumps({"ok": bool(output), "output": output}, ensure_ascii=False, indent=2))
+        return
+
+    if args.validate:
+        print(json.dumps(validate_assignments(assignments, courses_dict), ensure_ascii=False, indent=2))
         return
 
     if args.save:
