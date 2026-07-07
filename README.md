@@ -6,7 +6,7 @@ Este proyecto extrae el catálogo de cursos de LUT desde el API SISU y lo prepar
 
 - `scraper.py`: scraper principal con búsqueda y descarga de detalles de curso.
 - `build_db.py`: genera `lut_courses.db` desde `lut_courses.json` con índice FTS5.
-- `matcher_v2.py`: matcher interactivo que combina keywords y embeddings semánticos.
+- `matcher.py`: matcher interactivo que combina keywords y embeddings semánticos.
 - `lut_courses.json`: catálogo LUT versionado.
 - `ulpgc_courses.json`: asignaturas ULPGC enriquecidas para el matcher.
 - `tools/analysis/`: scripts e informes exploratorios sobre calidad del dataset.
